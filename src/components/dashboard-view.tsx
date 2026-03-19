@@ -31,7 +31,7 @@ export function DashboardView() {
       const q = filters.query.toLowerCase();
       result = result.filter(c => 
         c.caseNumber.toLowerCase().includes(q) || 
-        c.complainantName.toLowerCase().includes(q)
+        c.victimName.toLowerCase().includes(q)
       );
     }
 
@@ -44,7 +44,7 @@ export function DashboardView() {
     }
 
     if (filters.date) {
-      result = result.filter(c => c.date === filters.date);
+      result = result.filter(c => c.entryDate === filters.date);
     }
 
     setFilteredCases(result);
