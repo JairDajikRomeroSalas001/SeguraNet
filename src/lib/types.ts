@@ -6,10 +6,13 @@ export interface PoliceCase {
   complainantName: string;
   description: string;
   location: string;
-  date: string;
+  date: string; // Fecha del incidente
   crimeType: string;
   status: CaseStatus;
   tags: string[];
+  origin: string; // Origen del documento
+  entryDate: string; // Fecha de ingreso al sistema
+  entryTime: string; // Hora de ingreso al sistema
   createdAt: string;
   updatedAt: string;
 }

@@ -5,7 +5,7 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock } from 'lucide-react';
+import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, Building2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { updateCaseStatus } from '@/lib/store';
@@ -47,10 +47,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
-              <TableHead className="font-bold text-primary">Nro. Caso</TableHead>
+              <TableHead className="font-bold text-primary">Expediente</TableHead>
+              <TableHead className="font-bold text-primary">Origen</TableHead>
               <TableHead className="font-bold text-primary">Denunciante</TableHead>
               <TableHead className="font-bold text-primary">Delito</TableHead>
-              <TableHead className="font-bold text-primary">Fecha</TableHead>
+              <TableHead className="font-bold text-primary">Fecha Reg.</TableHead>
               <TableHead className="font-bold text-primary">Estado</TableHead>
               <TableHead className="text-right font-bold text-primary">Acciones</TableHead>
             </TableRow>
@@ -58,10 +59,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
           <TableBody>
             {cases.map((c) => (
               <TableRow key={c.id} className="hover:bg-accent/5 transition-colors">
-                <TableCell className="font-mono text-xs font-semibold">{c.caseNumber}</TableCell>
+                <TableCell className="font-mono text-xs font-bold text-primary">{c.caseNumber}</TableCell>
+                <TableCell className="text-xs">{c.origin}</TableCell>
                 <TableCell className="font-medium">{c.complainantName}</TableCell>
                 <TableCell>{c.crimeType}</TableCell>
-                <TableCell>{c.date}</TableCell>
+                <TableCell className="text-xs">{c.entryDate}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`flex items-center gap-1.5 w-fit ${statusConfig[c.status].color}`}>
                     {statusConfig[c.status].icon}
@@ -80,11 +82,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       </div>
 
       <Dialog open={!!selectedCase} onOpenChange={(open) => !open && setSelectedCase(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-primary">
               <FileText className="h-5 w-5" />
-              Detalle del Caso: {selectedCase?.caseNumber}
+              Detalle del Expediente: {selectedCase?.caseNumber}
             </DialogTitle>
             <DialogDescription>
               Información completa y gestión del estado del caso.
@@ -93,18 +95,29 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
           {selectedCase && (
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground font-medium mb-1">Denunciante</p>
-                  <p className="font-semibold text-lg">{selectedCase.complainantName}</p>
+                  <p className="text-muted-foreground font-medium mb-1">Origen del Documento</p>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary/60" />
+                    <p className="font-semibold">{selectedCase.origin}</p>
+                  </div>
                 </div>
                 <div>
-                  <p className="text-muted-foreground font-medium mb-1">Fecha de Registro</p>
-                  <p>{selectedCase.date}</p>
+                  <p className="text-muted-foreground font-medium mb-1">Fecha de Ingreso</p>
+                  <p>{selectedCase.entryDate} a las {selectedCase.entryTime}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium mb-1">Denunciante</p>
+                  <p className="font-semibold">{selectedCase.complainantName}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground font-medium mb-1">Tipo de Delito</p>
                   <p className="font-medium">{selectedCase.crimeType}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium mb-1">Fecha del Incidente</p>
+                  <p>{selectedCase.date}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground font-medium mb-1">Ubicación</p>

@@ -3,7 +3,7 @@ import { PoliceCase, CaseStatus } from './types';
 let cases: PoliceCase[] = [
   {
     id: '1',
-    caseNumber: 'CP-2024-001',
+    caseNumber: 'EXP-2024-001',
     complainantName: 'Juan Pérez',
     description: 'Robo a mano armada cerca de la Plaza de Armas de Paucartambo.',
     location: 'Plaza de Armas, Paucartambo',
@@ -11,12 +11,15 @@ let cases: PoliceCase[] = [
     crimeType: 'Robo Agravado',
     status: 'Pendiente',
     tags: ['Robo', 'Arma blanca', 'Plaza de Armas'],
+    origin: 'Denuncia Directa',
+    entryDate: '2024-05-15',
+    entryTime: '10:30',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
     id: '2',
-    caseNumber: 'CP-2024-002',
+    caseNumber: 'EXP-2024-002',
     complainantName: 'María Condori',
     description: 'Hurto de pertenencias personales en el Mercado Central.',
     location: 'Mercado Central de Paucartambo',
@@ -24,6 +27,9 @@ let cases: PoliceCase[] = [
     crimeType: 'Hurto',
     status: 'En Proceso',
     tags: ['Hurto', 'Mercado'],
+    origin: 'Denuncia Directa',
+    entryDate: '2024-05-16',
+    entryTime: '14:20',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -34,7 +40,7 @@ export const getCases = () => cases;
 export const addCase = (newCase: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'>) => {
   const nextId = (cases.length + 1).toString();
   const year = new Date().getFullYear();
-  const caseNumber = `CP-${year}-${nextId.padStart(3, '0')}`;
+  const caseNumber = `EXP-${year}-${nextId.padStart(3, '0')}`;
   
   const createdCase: PoliceCase = {
     ...newCase,

@@ -14,7 +14,7 @@ import { PoliceCase } from '@/lib/types';
 
 export function DashboardView() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('panel');
+  const [activeTab, setActiveTab] = useState('registro');
   const [allCases, setAllCases] = useState<PoliceCase[]>(getCases());
   const [filteredCases, setFilteredCases] = useState<PoliceCase[]>(getCases());
 
@@ -79,31 +79,21 @@ export function DashboardView() {
       <main className="flex-1 container mx-auto py-8 px-4 max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
           <div className="flex justify-center md:justify-start mb-2">
-            <TabsList className="bg-white/50 border shadow-sm">
-              <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                <LayoutDashboard className="h-4 w-4" />
-                Panel de Casos
-              </TabsTrigger>
-              <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+            <TabsList className="bg-white/50 border shadow-sm p-1 h-12">
+              <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
                 <FilePlus className="h-4 w-4" />
-                Registro de Casos
+                1. Registro de Casos
               </TabsTrigger>
-              <TabsTrigger value="busqueda" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+              <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
+                <LayoutDashboard className="h-4 w-4" />
+                2. Panel de Casos
+              </TabsTrigger>
+              <TabsTrigger value="busqueda" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
                 <Search className="h-4 w-4" />
-                Búsqueda Avanzada
+                3. Búsqueda Avanzada
               </TabsTrigger>
             </TabsList>
           </div>
-
-          <TabsContent value="panel" className="mt-0 outline-none">
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-primary">Vista General de Denuncias</h2>
-                <Badge variant="outline" className="bg-white">{allCases.length} Casos en total</Badge>
-              </div>
-              <CaseList cases={allCases} onUpdate={refreshCases} />
-            </div>
-          </TabsContent>
 
           <TabsContent value="registro" className="mt-0 outline-none">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -111,9 +101,21 @@ export function DashboardView() {
             </div>
           </TabsContent>
 
+          <TabsContent value="panel" className="mt-0 outline-none">
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-primary font-headline">Vista General de Denuncias</h2>
+                <Badge variant="outline" className="bg-white border-primary/20 text-primary">
+                  {allCases.length} Expedientes registrados
+                </Badge>
+              </div>
+              <CaseList cases={allCases} onUpdate={refreshCases} />
+            </div>
+          </TabsContent>
+
           <TabsContent value="busqueda" className="mt-0 outline-none">
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h2 className="text-2xl font-bold text-primary">Localizar Denuncias</h2>
+              <h2 className="text-2xl font-bold text-primary font-headline">Localizar Denuncias / Expedientes</h2>
               <CaseSearch onSearch={handleSearch} />
               <div className="bg-white/50 p-2 rounded-lg border border-dashed text-center mb-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Resultados del Filtro</p>
