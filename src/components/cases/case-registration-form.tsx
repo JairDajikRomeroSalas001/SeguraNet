@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,16 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FilePlus, FileText, Info, Clock, Calendar, Building2, Send } from 'lucide-react';
+import { FilePlus, FileText, Info, Clock, Calendar, Building2, Send, Hash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addCase } from '@/lib/store';
+import { addCase, getCases } from '@/lib/store';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const caseSchema = z.object({
+  caseNumber: z.string().min(1, 'Número de expediente requerido'),
   origin: z.string().min(1, 'Origen del documento requerido'),
   entryDate: z.string().min(1, 'Fecha de ingreso requerida'),
   entryTime: z.string().min(1, 'Hora de ingreso requerida'),
-  // Campos adicionales requeridos por la estructura de datos pero no enfatizados en este formulario
+  // Campos por defecto para mantener compatibilidad con la estructura de datos
   complainantName: z.string().default('No especificado'),
   description: z.string().default('Registro de expediente sin descripción detallada'),
   location: z.string().default('Comisaría Paucartambo'),
@@ -40,9 +41,17 @@ const originOptions = [
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
   const { toast } = useToast();
 
+  const generateNextCaseNumber = () => {
+    const cases = getCases();
+    const nextId = (cases.length + 1).toString();
+    const year = new Date().getFullYear();
+    return `EXP-${year}-${nextId.padStart(3, '0')}`;
+  };
+
   const form = useForm<z.infer<typeof caseSchema>>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
+      caseNumber: '',
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' }),
@@ -54,14 +63,22 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     },
   });
 
+  useEffect(() => {
+    form.setValue('caseNumber', generateNextCaseNumber());
+  }, [form]);
+
   const onSubmit = (values: z.infer<typeof caseSchema>) => {
     addCase({
       ...values,
       status: 'Pendiente',
       tags: ['Expediente'],
     });
-    toast({ title: "Expediente Registrado", description: "La información ha sido guardada exitosamente." });
-    form.reset();
+    toast({ title: "Expediente Registrado", description: `El expediente ${values.caseNumber} ha sido guardado exitosamente.` });
+    form.reset({
+      ...form.getValues(),
+      caseNumber: generateNextCaseNumber(),
+      origin: '',
+    });
     onCaseAdded();
   };
 
@@ -81,14 +98,29 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 <FileText className="h-4 w-4" /> Información de Registro
               </h3>
               
-              <Alert className="bg-blue-50 border-blue-200">
-                <Info className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-xs leading-relaxed">
-                  El número de expediente se genera automáticamente, siguiendo el formato: <strong>EXP-AÑO-CORRELATIVO</strong>. Asegúrese de verificar el origen del documento antes de continuar.
-                </AlertDescription>
-              </Alert>
-
               <div className="grid grid-cols-1 gap-6">
+                <FormField
+                  control={form.control}
+                  name="caseNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Hash className="h-4 w-4 text-primary/70" />
+                        Número de Expediente
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="EXP-AÑO-CORRELATIVO" 
+                          className="h-11 font-mono font-bold" 
+                          {...field} 
+                          readOnly 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="origin"
@@ -98,7 +130,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                         <Building2 className="h-4 w-4 text-primary/70" />
                         Origen del Documento
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-11">
                             <SelectValue placeholder="Seleccione la entidad de origen" />
@@ -152,9 +184,16 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
               </div>
             </div>
 
-            <div className="pt-4">
+            <Alert className="bg-blue-50 border-blue-200">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 text-xs leading-relaxed">
+                El numero de expediente se genera automaticamnete, siguiendo el formato: <strong>EXP-AÑO-CORRELATIVO</strong>. Asegurese de verificar el origen del documento antes de continuar.
+              </AlertDescription>
+            </Alert>
+
+            <div className="pt-2">
               <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-lg font-bold">
-                <Send className="mr-2 h-5 w-5" /> Generar y Registrar Expediente
+                <Send className="mr-2 h-5 w-5" /> Registrar Expediente
               </Button>
             </div>
           </form>

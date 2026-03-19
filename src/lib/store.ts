@@ -37,15 +37,17 @@ let cases: PoliceCase[] = [
 
 export const getCases = () => cases;
 
-export const addCase = (newCase: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'>) => {
+export const addCase = (newCase: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'> & { caseNumber?: string }) => {
   const nextId = (cases.length + 1).toString();
   const year = new Date().getFullYear();
-  const caseNumber = `EXP-${year}-${nextId.padStart(3, '0')}`;
+  
+  // Usar el número de expediente proporcionado o generar uno nuevo
+  const finalCaseNumber = newCase.caseNumber || `EXP-${year}-${nextId.padStart(3, '0')}`;
   
   const createdCase: PoliceCase = {
     ...newCase,
     id: nextId,
-    caseNumber,
+    caseNumber: finalCaseNumber,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
