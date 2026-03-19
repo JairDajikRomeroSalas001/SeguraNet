@@ -9,6 +9,7 @@ import { getCases } from '@/lib/store';
 import { LayoutDashboard, FilePlus, Search, ShieldCheck, LogOut, User as UserIcon } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { PoliceCase } from '@/lib/types';
 
 export function DashboardView() {
