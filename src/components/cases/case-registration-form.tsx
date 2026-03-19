@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FilePlus, FileText, Info, Clock, Calendar, Building2, Send, Hash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addCase, getCases } from '@/lib/store';
+import { addCase } from '@/lib/store';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const caseSchema = z.object({
@@ -19,12 +19,6 @@ const caseSchema = z.object({
   origin: z.string().min(1, 'Origen del documento requerido'),
   entryDate: z.string().min(1, 'Fecha de ingreso requerida'),
   entryTime: z.string().min(1, 'Hora de ingreso requerida'),
-  // Campos por defecto para mantener compatibilidad con la estructura de datos
-  complainantName: z.string().default('No especificado'),
-  description: z.string().default('Registro de expediente sin descripción detallada'),
-  location: z.string().default('Comisaría Paucartambo'),
-  date: z.string().default(new Date().toISOString().split('T')[0]),
-  crimeType: z.string().default('General'),
 });
 
 const originOptions = [
@@ -41,13 +35,6 @@ const originOptions = [
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
   const { toast } = useToast();
 
-  const generateNextCaseNumber = () => {
-    const cases = getCases();
-    const nextId = (cases.length + 1).toString();
-    const year = new Date().getFullYear();
-    return `EXP-${year}-${nextId.padStart(3, '0')}`;
-  };
-
   const form = useForm<z.infer<typeof caseSchema>>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
@@ -55,29 +42,26 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      complainantName: 'No especificado',
-      description: 'Registro de expediente sin descripción detallada',
-      location: 'Comisaría Paucartambo',
-      date: new Date().toISOString().split('T')[0],
-      crimeType: 'General',
     },
   });
-
-  useEffect(() => {
-    form.setValue('caseNumber', generateNextCaseNumber());
-  }, [form]);
 
   const onSubmit = (values: z.infer<typeof caseSchema>) => {
     addCase({
       ...values,
       status: 'Pendiente',
       tags: ['Expediente'],
+      complainantName: 'No especificado',
+      description: 'Registro de expediente sin descripción detallada',
+      location: 'Comisaría Paucartambo',
+      date: values.entryDate,
+      crimeType: 'General',
     });
     toast({ title: "Expediente Registrado", description: `El expediente ${values.caseNumber} ha sido guardado exitosamente.` });
     form.reset({
-      ...form.getValues(),
-      caseNumber: generateNextCaseNumber(),
+      caseNumber: '',
       origin: '',
+      entryDate: new Date().toISOString().split('T')[0],
+      entryTime: new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     });
     onCaseAdded();
   };
@@ -110,10 +94,9 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                       </FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="EXP-AÑO-CORRELATIVO" 
+                          placeholder="Ej: EXP-2024-001" 
                           className="h-11 font-mono font-bold" 
                           {...field} 
-                          readOnly 
                         />
                       </FormControl>
                       <FormMessage />
