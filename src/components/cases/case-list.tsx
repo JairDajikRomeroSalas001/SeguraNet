@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -55,25 +55,41 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const [showConfirmStatus, setShowConfirmStatus] = useState(false);
   const { toast } = useToast();
 
+  // Forzar limpieza de puntero si el componente se queda trabado por Radix
+  useEffect(() => {
+    if (!selectedCase && !showConfirmStatus) {
+      document.body.style.pointerEvents = 'auto';
+    }
+  }, [selectedCase, showConfirmStatus]);
+
   const handleUpdateStatusClick = () => {
     if (newStatus && newStatus !== selectedCase?.status) {
       setShowConfirmStatus(true);
+    } else if (!newStatus) {
+      toast({ variant: "destructive", title: "Atención", description: "Seleccione un nuevo estado primero." });
     }
   };
 
   const confirmUpdateStatus = () => {
     if (selectedCase && newStatus) {
+      // 1. Ejecutar cambio en el store
       updateCaseStatus(selectedCase.id, newStatus);
       
-      // Cerrar primero el alert y luego el detalle para evitar bloqueos de Radix
+      // 2. Cerrar diálogos en orden inverso
       setShowConfirmStatus(false);
       
+      // Pequeño delay para permitir que el AlertDialog cierre su overlay antes de quitar el Dialog principal
       setTimeout(() => {
+        const caseNum = selectedCase.caseNumber;
         setSelectedCase(null);
+        setNewStatus(null);
+        
         toast({ 
           title: "Estado Actualizado", 
-          description: `Expediente ${selectedCase.caseNumber} actualizado con éxito.` 
+          description: `Expediente ${caseNum} actualizado con éxito.` 
         });
+        
+        // 3. Notificar al padre para refrescar la tabla
         onUpdate();
       }, 100);
     }
@@ -83,7 +99,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg border border-dashed">
         <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground">No se encontraron denuncias.</p>
+        <p className="text-muted-foreground">No se encontraron denuncias con los filtros aplicados.</p>
       </div>
     );
   }
@@ -144,7 +160,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
             <DialogTitle className="text-primary flex items-center gap-2">
               <FileText className="h-5 w-5" /> Expediente: {selectedCase?.caseNumber}
             </DialogTitle>
-            <DialogDescription>Detalle completo del caso registrado y gestión de estado.</DialogDescription>
+            <DialogDescription>Detalle completo del caso registrado y gestión de estado institucional.</DialogDescription>
           </DialogHeader>
 
           {selectedCase && (
@@ -217,7 +233,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
               <div className="flex items-center gap-4 pt-4 border-t bg-muted/5 p-4 rounded-lg">
                 <p className="text-sm font-bold">Estado Actual:</p>
-                <Select defaultValue={selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
+                <Select value={newStatus || selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pendiente">Pendiente</SelectItem>
@@ -226,7 +242,9 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     <SelectItem value="Cerrado">Cerrado</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={handleUpdateStatusClick}>Actualizar Estado</Button>
+                <Button onClick={handleUpdateStatusClick} disabled={newStatus === selectedCase.status}>
+                  Actualizar Estado
+                </Button>
               </div>
             </div>
           )}
@@ -239,7 +257,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
           <AlertDialogHeader>
             <AlertDialogTitle>¿Está seguro de cambiar el estado?</AlertDialogTitle>
             <AlertDialogDescription>
-              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada con el oficial <strong>{selectedCase?.assignedOfficer}</strong>.
+              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada bajo la supervisión del oficial <strong>{selectedCase?.assignedOfficer}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
