@@ -5,7 +5,7 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, UserCheck, AlertTriangle, History, Archive } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -25,11 +25,11 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
-  'Pendiente': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: <Clock className="h-3 w-3" /> },
-  'En Proceso': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: <ShieldAlert className="h-3 w-3" /> },
-  'Resuelto': { color: 'bg-green-100 text-green-800 border-green-200', icon: <CheckCircle2 className="h-3 w-3" /> },
-  'Cerrado': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: <Lock className="h-3 w-3" /> },
-  'Archivado': { color: 'bg-slate-100 text-slate-800 border-slate-200', icon: <Archive className="h-3 w-3" /> },
+  'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
+  'En Proceso': { color: 'text-blue-600', icon: <ShieldAlert className="h-3 w-3" /> },
+  'Resuelto': { color: 'text-green-600', icon: <CheckCircle2 className="h-3 w-3" /> },
+  'Cerrado': { color: 'text-gray-600', icon: <Lock className="h-3 w-3" /> },
+  'Archivado': { color: 'text-slate-600', icon: <Archive className="h-3 w-3" /> },
 };
 
 const riskColors: Record<string, string> = {
@@ -40,45 +40,40 @@ const riskColors: Record<string, string> = {
 };
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
-  const [selectedCase, setSelectedCase] = useState<PoliceCase | null>(null);
-  const [newStatus, setNewStatus] = useState<CaseStatus | null>(null);
-  const [showConfirmStatus, setShowConfirmStatus] = useState(false);
+  const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
+  const [changingStatus, setChangingStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
   const { toast } = useToast();
 
-  // LIMPIADOR DE SEGURIDAD EXTREMO: Asegura que el body siempre sea interactuable tras cerrar cualquier diálogo
+  // LIMPIADOR DE SEGURIDAD EXTREMO: Asegura que el body siempre sea interactuable tras cerrar cualquier componente de Radix
   useEffect(() => {
-    if (!selectedCase && !showConfirmStatus) {
-      const cleanup = () => {
-        document.body.style.pointerEvents = '';
-        document.body.style.overflow = '';
-      };
+    const cleanup = () => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    };
+    
+    if (!viewingCase && !changingStatus) {
       const timer = setTimeout(cleanup, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedCase, showConfirmStatus]);
+  }, [viewingCase, changingStatus]);
 
-  const handleUpdateStatusClick = () => {
-    if (newStatus && newStatus !== selectedCase?.status) {
-      setShowConfirmStatus(true);
-    }
+  const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
+    setChangingStatus({ id: caseId, caseNumber, status: newStatus });
   };
 
-  const confirmUpdateStatus = () => {
-    if (selectedCase && newStatus) {
-      updateCaseStatus(selectedCase.id, newStatus);
-      const caseNum = selectedCase.caseNumber;
+  const confirmStatusChange = () => {
+    if (changingStatus) {
+      updateCaseStatus(changingStatus.id, changingStatus.status);
+      const caseNum = changingStatus.caseNumber;
+      const targetStatus = changingStatus.status;
       
-      // Cerrar diálogos ANTES de refrescar para evitar bloqueos de UI
-      setShowConfirmStatus(false);
-      setSelectedCase(null);
-      setNewStatus(null);
+      setChangingStatus(null);
       
-      // Usar requestAnimationFrame para asegurar que el DOM se limpie antes del refresh
       requestAnimationFrame(() => {
         onUpdate();
         toast({ 
           title: "Estado Actualizado", 
-          description: `Expediente ${caseNum} actualizado a "${newStatus}".` 
+          description: `El expediente ${caseNum} ahora está como "${targetStatus}".` 
         });
       });
     }
@@ -106,7 +101,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
               <TableHead className="font-bold text-primary">Oficial</TableHead>
               <TableHead className="font-bold text-primary">Riesgo</TableHead>
               <TableHead className="font-bold text-primary">Estado</TableHead>
-              <TableHead className="font-bold text-primary">Última Act.</TableHead>
+              <TableHead className="font-bold text-primary">Actualización</TableHead>
               <TableHead className="text-right font-bold text-primary">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -116,17 +111,29 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 <TableCell className="font-mono text-xs font-bold">{c.caseNumber}</TableCell>
                 <TableCell className="text-xs">{c.victim.name}</TableCell>
                 <TableCell className="text-xs">{c.aggressor.name}</TableCell>
-                <TableCell className="text-xs max-w-[150px] truncate" title={c.violenceType}>{c.violenceType}</TableCell>
-                <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer || 'Sin asignar'}</TableCell>
+                <TableCell className="text-xs">{c.violenceType}</TableCell>
+                <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`text-[10px] ${riskColors[c.riskLevel]}`}>
                     {c.riskLevel}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={`flex items-center gap-1.5 w-fit ${statusConfig[c.status].color}`}>
-                    {statusConfig[c.status].icon} {c.status}
-                  </Badge>
+                  <Select 
+                    value={c.status} 
+                    onValueChange={(val) => handleStatusChangeAttempt(c.id, c.caseNumber, val as CaseStatus)}
+                  >
+                    <SelectTrigger className={`h-8 w-[140px] text-xs font-bold bg-muted/20 ${statusConfig[c.status].color}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                      <SelectItem value="En Proceso">En Proceso</SelectItem>
+                      <SelectItem value="Resuelto">Resuelto</SelectItem>
+                      <SelectItem value="Cerrado">Cerrado</SelectItem>
+                      <SelectItem value="Archivado">Archivado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="text-[10px] text-muted-foreground whitespace-nowrap">
                   <div className="flex flex-col">
@@ -135,7 +142,14 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => setSelectedCase(c)}><MoreHorizontal className="h-4 w-4" /></Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 gap-1.5 text-xs font-bold border-primary/20 text-primary hover:bg-primary hover:text-white"
+                    onClick={() => setViewingCase(c)}
+                  >
+                    <Eye className="h-3 w-3" /> VER EXPEDIENTE
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -143,46 +157,47 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </Table>
       </div>
 
-      <Dialog open={!!selectedCase} onOpenChange={(open) => !open && setSelectedCase(null)}>
+      {/* DIÁLOGO DE DETALLE COMPLETO */}
+      <Dialog open={!!viewingCase} onOpenChange={(open) => !open && setViewingCase(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Detalle del Expediente: {selectedCase?.caseNumber}
+              <FileText className="h-5 w-5" /> Expediente: {viewingCase?.caseNumber}
             </DialogTitle>
-            <DialogDescription>Información registrada en el sistema de la Comisaría de Paucartambo.</DialogDescription>
+            <DialogDescription>Información oficial registrada en la base de datos de la Comisaría.</DialogDescription>
           </DialogHeader>
 
-          {selectedCase && (
+          {viewingCase && (
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
                   <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><User className="h-4 w-4" /> Datos Víctima</h4>
-                  <p className="text-sm"><strong>Nombre:</strong> {selectedCase.victim.name}</p>
-                  <p className="text-sm"><strong>DNI:</strong> {selectedCase.victim.dni}</p>
-                  <p className="text-sm"><strong>Celular:</strong> {selectedCase.victim.phone}</p>
-                  <p className="text-sm"><strong>Dirección:</strong> {selectedCase.victim.street} #{selectedCase.victim.number}, {selectedCase.victim.district}</p>
+                  <p className="text-sm"><strong>Nombre:</strong> {viewingCase.victim.name}</p>
+                  <p className="text-sm"><strong>DNI:</strong> {viewingCase.victim.dni}</p>
+                  <p className="text-sm"><strong>Celular:</strong> {viewingCase.victim.phone}</p>
+                  <p className="text-sm"><strong>Dirección:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
                 </div>
                 <div className="space-y-3 p-4 bg-destructive/5 rounded-lg border">
                   <h4 className="text-xs font-bold text-destructive flex items-center gap-2 uppercase tracking-widest"><User className="h-4 w-4" /> Datos Agresor</h4>
-                  <p className="text-sm"><strong>Nombre:</strong> {selectedCase.aggressor.name}</p>
-                  <p className="text-sm"><strong>DNI:</strong> {selectedCase.aggressor.dni}</p>
-                  <p className="text-sm"><strong>Celular:</strong> {selectedCase.aggressor.phone}</p>
-                  <p className="text-sm"><strong>Dirección:</strong> {selectedCase.aggressor.street} #{selectedCase.aggressor.number}, {selectedCase.aggressor.district}</p>
+                  <p className="text-sm"><strong>Nombre:</strong> {viewingCase.aggressor.name}</p>
+                  <p className="text-sm"><strong>DNI:</strong> {viewingCase.aggressor.dni}</p>
+                  <p className="text-sm"><strong>Celular:</strong> {viewingCase.aggressor.phone}</p>
+                  <p className="text-sm"><strong>Dirección:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-primary/5 rounded-lg border">
                   <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Oficial Responsable</h4>
-                  <p className="text-sm font-semibold uppercase">{selectedCase.assignedOfficer}</p>
+                  <p className="text-sm font-semibold uppercase">{viewingCase.assignedOfficer}</p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Tipo de Violencia</h4>
-                  <p className="text-sm font-semibold">{selectedCase.violenceType}</p>
+                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Clasificación</h4>
+                  <p className="text-sm font-semibold">{viewingCase.violenceType}</p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Modificado por última vez</h4>
-                  <p className="text-xs font-mono">{format(new Date(selectedCase.updatedAt), "dd/MM/yyyy 'a las' HH:mm:ss", { locale: es })}</p>
+                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Última modificación</h4>
+                  <p className="text-xs font-mono">{format(new Date(viewingCase.updatedAt), "dd/MM/yyyy HH:mm:ss", { locale: es })}</p>
                 </div>
               </div>
 
@@ -194,50 +209,36 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 </h4>
                 <div className="bg-muted/10 p-4 rounded-xl border">
                   <p className="text-sm text-muted-foreground italic leading-relaxed">
-                    {selectedCase.incidentDescription}
+                    {viewingCase.incidentDescription}
                   </p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-4 pt-4 border-t bg-muted/5 p-4 rounded-lg">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground">Estado del Proceso</label>
-                  <Select value={newStatus || selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
-                    <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pendiente">Pendiente</SelectItem>
-                      <SelectItem value="En Proceso">En Proceso</SelectItem>
-                      <SelectItem value="Resuelto">Resuelto</SelectItem>
-                      <SelectItem value="Cerrado">Cerrado</SelectItem>
-                      <SelectItem value="Archivado">Archivado</SelectItem>
-                    </SelectContent>
-                  </Select>
+              
+              {viewingCase.additionalObservations && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Observaciones</h4>
+                  <p className="text-xs p-3 border rounded bg-muted/5">{viewingCase.additionalObservations}</p>
                 </div>
-                <Button 
-                  onClick={handleUpdateStatusClick} 
-                  disabled={!newStatus || newStatus === selectedCase.status}
-                  className="mt-auto"
-                >
-                  Actualizar Estado
-                </Button>
-              </div>
+              )}
             </div>
           )}
-          <DialogFooter><Button variant="ghost" onClick={() => setSelectedCase(null)}>Cerrar</Button></DialogFooter>
+          <DialogFooter><Button variant="ghost" onClick={() => setViewingCase(null)}>Cerrar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showConfirmStatus} onOpenChange={setShowConfirmStatus}>
+      {/* ALERTA DE CONFIRMACIÓN PARA CAMBIO DE ESTADO */}
+      <AlertDialog open={!!changingStatus} onOpenChange={(open) => !open && setChangingStatus(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Confirmar cambio de estado?</AlertDialogTitle>
             <AlertDialogDescription>
-              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada en el historial del sistema.
+              Usted está por cambiar el estado del expediente <strong>{changingStatus?.caseNumber}</strong> a <strong>"{changingStatus?.status}"</strong>. 
+              Esta acción quedará registrada permanentemente en el historial de auditoría.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmUpdateStatus} className="bg-primary hover:bg-primary/90">
+            <AlertDialogAction onClick={confirmStatusChange} className="bg-primary hover:bg-primary/90">
               Sí, Actualizar
             </AlertDialogAction>
           </AlertDialogFooter>
