@@ -31,7 +31,7 @@ export function DashboardView() {
       const q = filters.query.toLowerCase();
       result = result.filter(c => 
         c.caseNumber.toLowerCase().includes(q) || 
-        c.victimName.toLowerCase().includes(q)
+        c.victim.name.toLowerCase().includes(q)
       );
     }
 
@@ -39,7 +39,7 @@ export function DashboardView() {
       result = result.filter(c => c.status === filters.status);
     }
 
-    if (filters.type) {
+    if (filters.crimeType) {
       result = result.filter(c => c.crimeType.toLowerCase().includes(filters.type.toLowerCase()));
     }
 
@@ -52,84 +52,51 @@ export function DashboardView() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
       <header className="bg-primary text-primary-foreground py-4 px-6 flex justify-between items-center shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-white/10 p-2 rounded-full">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Paucartambo Segura</h1>
-            <p className="text-xs text-white/70">Comisaría de Paucartambo - Cusco</p>
-          </div>
+          <div className="bg-white/10 p-2 rounded-full"><ShieldCheck className="h-6 w-6" /></div>
+          <div><h1 className="text-xl font-bold tracking-tight">Paucartambo Segura</h1><p className="text-xs text-white/70">Comisaría de Paucartambo - Cusco</p></div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-sm font-semibold">{user?.username}</span>
-            <span className="text-[10px] uppercase tracking-wider opacity-80">Administrador</span>
-          </div>
+          <div className="hidden md:flex flex-col items-end mr-2"><span className="text-sm font-semibold">{user?.username}</span><span className="text-[10px] uppercase tracking-wider opacity-80">Administrador</span></div>
           <UserIcon className="h-5 w-5 opacity-80" />
-          <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/10">
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/10"><LogOut className="h-5 w-5" /></Button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 container mx-auto py-8 px-4 max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-          <div className="flex justify-center md:justify-start mb-2">
-            <TabsList className="bg-white/50 border shadow-sm p-1 h-12">
-              <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
-                <FilePlus className="h-4 w-4" />
-                1. Registro de Casos
-              </TabsTrigger>
-              <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
-                <LayoutDashboard className="h-4 w-4" />
-                2. Panel de Casos
-              </TabsTrigger>
-              <TabsTrigger value="busqueda" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6">
-                <Search className="h-4 w-4" />
-                3. Búsqueda Avanzada
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="bg-white/50 border shadow-sm p-1 h-12">
+            <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6"><FilePlus className="h-4 w-4" /> 1. Registro de Casos</TabsTrigger>
+            <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6"><LayoutDashboard className="h-4 w-4" /> 2. Panel de Casos</TabsTrigger>
+            <TabsTrigger value="busqueda" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6"><Search className="h-4 w-4" /> 3. Búsqueda Avanzada</TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="registro" className="mt-0 outline-none">
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <CaseRegistrationForm onCaseAdded={() => { setActiveTab('panel'); refreshCases(); }} />
-            </div>
+          <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CaseRegistrationForm onCaseAdded={() => { setActiveTab('panel'); refreshCases(); }} />
           </TabsContent>
 
-          <TabsContent value="panel" className="mt-0 outline-none">
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-primary font-headline">Vista General de Denuncias</h2>
-                <Badge variant="outline" className="bg-white border-primary/20 text-primary">
-                  {allCases.length} Expedientes registrados
-                </Badge>
+                <h2 className="text-2xl font-bold text-primary">Vista General de Denuncias</h2>
+                <Badge variant="outline" className="bg-white border-primary/20 text-primary">{allCases.length} Casos registrados</Badge>
               </div>
               <CaseList cases={allCases} onUpdate={refreshCases} />
             </div>
           </TabsContent>
 
-          <TabsContent value="busqueda" className="mt-0 outline-none">
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <h2 className="text-2xl font-bold text-primary font-headline">Localizar Denuncias / Expedientes</h2>
+          <TabsContent value="busqueda" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-primary">Búsqueda de Expedientes</h2>
               <CaseSearch onSearch={handleSearch} />
-              <div className="bg-white/50 p-2 rounded-lg border border-dashed text-center mb-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Resultados del Filtro</p>
-              </div>
               <CaseList cases={filteredCases} onUpdate={refreshCases} />
             </div>
           </TabsContent>
         </Tabs>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 px-6 border-t bg-white text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Paucartambo Segura - Sistema de Gestión de Denuncias Policiales.
-      </footer>
+      <footer className="py-6 px-6 border-t bg-white text-center text-sm text-muted-foreground">© {new Date().getFullYear()} Paucartambo Segura - Ministerio del Interior.</footer>
     </div>
   );
 }

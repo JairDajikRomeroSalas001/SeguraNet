@@ -1,5 +1,15 @@
 export type CaseStatus = 'Pendiente' | 'En Proceso' | 'Resuelto' | 'Cerrado';
 
+export interface PersonData {
+  name: string;
+  dni: string;
+  phone: string;
+  street: string;
+  number: string;
+  district: string;
+  reference: string;
+}
+
 export interface PoliceCase {
   id: string;
   caseNumber: string;
@@ -7,11 +17,9 @@ export interface PoliceCase {
   origin: string;
   entryDate: string;
   entryTime: string;
-  // Paso 2: Datos de Víctima y Agresor
-  victimName: string;
-  victimDni: string;
-  aggressorName: string;
-  aggressorDni: string;
+  // Paso 2: Datos de Personas
+  victim: PersonData;
+  aggressor: PersonData;
   // Paso 3: Clasificación del Incidente
   crimeType: string;
   location: string;
@@ -20,7 +28,6 @@ export interface PoliceCase {
   // Metadatos
   status: CaseStatus;
   tags: string[];
-  complainantName: string; // Nombre referencial (usualmente la víctima)
   createdAt: string;
   updatedAt: string;
 }
