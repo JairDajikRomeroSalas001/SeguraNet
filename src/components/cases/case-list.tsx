@@ -5,7 +5,7 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, Building2, User, Phone, MapPin } from 'lucide-react';
+import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, Phone, MapPin, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { updateCaseStatus } from '@/lib/store';
@@ -16,6 +16,13 @@ const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }>
   'En Proceso': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: <ShieldAlert className="h-3 w-3" /> },
   'Resuelto': { color: 'bg-green-100 text-green-800 border-green-200', icon: <CheckCircle2 className="h-3 w-3" /> },
   'Cerrado': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: <Lock className="h-3 w-3" /> },
+};
+
+const riskColors: Record<string, string> = {
+  'Leve': 'bg-green-100 text-green-700 border-green-200',
+  'Moderado': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  'Severo': 'bg-orange-100 text-orange-700 border-orange-200',
+  'Muy Severo': 'bg-red-100 text-red-700 border-red-200',
 };
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
@@ -50,7 +57,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
               <TableHead className="font-bold text-primary">Expediente</TableHead>
               <TableHead className="font-bold text-primary">Víctima</TableHead>
               <TableHead className="font-bold text-primary">Agresor</TableHead>
-              <TableHead className="font-bold text-primary">Delito</TableHead>
+              <TableHead className="font-bold text-primary">Tipo Violencia</TableHead>
+              <TableHead className="font-bold text-primary">Riesgo</TableHead>
               <TableHead className="font-bold text-primary">Estado</TableHead>
               <TableHead className="text-right font-bold text-primary">Acciones</TableHead>
             </TableRow>
@@ -61,7 +69,12 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 <TableCell className="font-mono text-xs font-bold">{c.caseNumber}</TableCell>
                 <TableCell className="text-xs">{c.victim.name}</TableCell>
                 <TableCell className="text-xs">{c.aggressor.name}</TableCell>
-                <TableCell className="text-xs">{c.crimeType}</TableCell>
+                <TableCell className="text-xs">{c.violenceType}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={`text-[10px] ${riskColors[c.riskLevel]}`}>
+                    {c.riskLevel}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`flex items-center gap-1.5 w-fit ${statusConfig[c.status].color}`}>
                     {statusConfig[c.status].icon} {c.status}
@@ -104,9 +117,15 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 </div>
               </div>
 
-              <div className="p-4 bg-primary/5 rounded-lg border">
-                <h4 className="text-xs font-bold text-primary mb-2">INCIDENTE</h4>
-                <p className="text-sm italic">"{selectedCase.description}"</p>
+              <div className="p-4 bg-primary/5 rounded-lg border flex justify-between items-center">
+                <div>
+                  <h4 className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Clasificación</h4>
+                  <p className="text-sm font-semibold">{selectedCase.violenceType}</p>
+                </div>
+                <div className="text-right">
+                  <h4 className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Nivel de Riesgo</h4>
+                  <Badge className={riskColors[selectedCase.riskLevel]}>{selectedCase.riskLevel}</Badge>
+                </div>
               </div>
 
               <div className="flex items-center gap-4 pt-4 border-t">

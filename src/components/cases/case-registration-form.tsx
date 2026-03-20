@@ -9,17 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
-  Send, Hash, User, ShieldAlert, MapPin, 
+  Send, Hash, User, ShieldAlert, 
   ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle, Shield
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -42,10 +41,6 @@ const caseSchema = z.object({
   aggressor: personSchema,
   violenceType: z.string().min(1, 'Tipo de violencia requerido'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
-  crimeType: z.string().min(1, 'Tipo de delito requerido'),
-  location: z.string().min(1, 'Ubicación requerida'),
-  description: z.string().min(10, 'Descripción más detallada requerida'),
-  incidentDate: z.string().min(1, 'Fecha requerida'),
 });
 
 type FormData = z.infer<typeof caseSchema>;
@@ -71,11 +66,11 @@ const violenceOptions = [
 ];
 
 const riskOptions = [
-  { value: "Leve", label: "Riesgo Leve", desc: "Riesgo bajo, sin indicadores de peligro inmediato", color: "border-green-200 bg-green-50 text-green-700" },
-  { value: "Moderado", label: "Moderado", desc: "Riesgo medio, requiere seguimiento regular", color: "border-yellow-200 bg-yellow-50 text-yellow-700" },
-  { value: "Severo", label: "Severo", desc: "Riesgo alto, requiere intervención prioritaria", color: "border-orange-200 bg-orange-50 text-orange-700" },
-  { value: "Muy Severo", label: "Muy Severo", desc: "Riesgo extremo, peligro inminente para la vida", color: "border-red-200 bg-red-50 text-red-700" },
-];
+  { value: "Leve", label: "Riesgo Leve", desc: "Riesgo bajo, sin indicadores de peligro inmediato", color: "border-green-200 bg-green-50 text-green-700", accent: "bg-green-600" },
+  { value: "Moderado", label: "Moderado", desc: "Riesgo medio, requiere seguimiento regular", color: "border-yellow-200 bg-yellow-50 text-yellow-700", accent: "bg-yellow-600" },
+  { value: "Severo", label: "Severo", desc: "Riesgo alto, requiere intervención prioritaria", color: "border-orange-200 bg-orange-50 text-orange-700", accent: "bg-orange-600" },
+  { value: "Muy Severo", label: "Muy Severo", desc: "Riesgo extremo, peligro inminente para la vida", color: "border-red-200 bg-red-50 text-red-700", accent: "bg-red-600" },
+] as const;
 
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
   const [step, setStep] = useState(1);
@@ -98,12 +93,10 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       violenceType: '',
       riskLevel: 'Leve',
-      crimeType: '',
-      location: 'Paucartambo',
-      description: '',
-      incidentDate: new Date().toISOString().split('T')[0],
     },
   });
+
+  const selectedRisk = form.watch('riskLevel');
 
   const validateDni = async (type: 'victim' | 'aggressor') => {
     const dni = form.getValues(`${type}.dni`);
@@ -134,7 +127,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
-    if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel', 'crimeType', 'location', 'description', 'incidentDate'];
+    if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(step + 1);
@@ -144,8 +137,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     addCase({
       ...values,
       status: 'Pendiente',
-      tags: [values.crimeType, values.violenceType, values.riskLevel],
-      date: values.incidentDate
+      tags: [values.violenceType, values.riskLevel],
     });
     
     toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado con éxito.` });
@@ -330,7 +322,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
-                  <Badge variant="outline" className="text-[10px] font-bold bg-primary/5">Clasificación según Ley N°30364</Badge>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-primary/5 text-primary">Clasificación según Ley N°30364</Badge>
                 </div>
                 
                 <FormField control={form.control} name="violenceType" render={({ field }) => (
@@ -351,8 +343,8 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 )} />
 
                 <FormField control={form.control} name="riskLevel" render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="flex items-center gap-2 font-bold"><Shield className="h-4 w-4 text-primary" /> NIVEL DE RIESGO</FormLabel>
+                  <FormItem className="space-y-4">
+                    <FormLabel className="flex items-center gap-2 font-bold uppercase tracking-tight text-xs text-muted-foreground"><Shield className="h-4 w-4" /> Evaluación del Nivel de Riesgo</FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
@@ -366,36 +358,35 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                             </FormControl>
                             <FormLabel
                               className={cn(
-                                "flex flex-col items-start gap-1 p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md",
+                                "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full text-center overflow-hidden",
                                 field.value === opt.value 
-                                  ? cn("border-primary ring-2 ring-primary/20", opt.color)
-                                  : "border-muted bg-white hover:border-muted-foreground/30"
+                                  ? cn("border-foreground ring-4 ring-offset-2 ring-primary/20 scale-[1.02]", opt.color)
+                                  : "border-muted bg-white hover:bg-muted/50 grayscale-[0.5]"
                               )}
                             >
-                              <span className="font-bold text-sm uppercase">{opt.label}</span>
-                              <span className="text-[10px] leading-tight opacity-80">{opt.desc}</span>
+                              {field.value === opt.value && <div className={cn("absolute top-0 left-0 w-full h-1.5", opt.accent)} />}
+                              <span className="font-extrabold text-sm uppercase mb-1">{opt.label}</span>
+                              <div className={cn("w-3 h-3 rounded-full mb-2 shadow-sm", opt.accent)} />
                             </FormLabel>
                           </FormItem>
                         ))}
                       </RadioGroup>
                     </FormControl>
+                    
+                    {/* Mensaje de riesgo dinámico */}
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                      {riskOptions.find(o => o.value === selectedRisk) && (
+                        <Alert className={cn("border-none shadow-sm", riskOptions.find(o => o.value === selectedRisk)?.color)}>
+                          <Shield className="h-4 w-4" />
+                          <AlertTitle className="text-xs font-bold uppercase">Estado: {selectedRisk}</AlertTitle>
+                          <AlertDescription className="text-sm">
+                            {riskOptions.find(o => o.value === selectedRisk)?.desc}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
-                )} />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                  <FormField control={form.control} name="crimeType" render={({ field }) => (
-                    <FormItem><FormLabel>Delito / Falta Específica</FormLabel><FormControl><Input placeholder="Ej: Agresión física grave" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="incidentDate" render={({ field }) => (
-                    <FormItem><FormLabel>Fecha del Incidente</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="location" render={({ field }) => (
-                  <FormItem><FormLabel><MapPin className="h-4 w-4 mr-1 inline" /> Ubicación Exacta</FormLabel><FormControl><Input placeholder="Ej: Plaza de Armas de Paucartambo" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Descripción Detallada de los Hechos</FormLabel><FormControl><Textarea className="min-h-[120px]" placeholder="Relate lo sucedido..." {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
             )}
@@ -408,7 +399,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 <div className="grid grid-cols-1 gap-4 text-sm">
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-2 uppercase">DATOS DEL EXPEDIENTE</h4>
+                    <h4 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">DATOS DEL EXPEDIENTE</h4>
                     <p><strong>Número:</strong> {form.getValues().caseNumber}</p>
                     <p><strong>Origen:</strong> {form.getValues().origin}</p>
                     <p><strong>Ingreso:</strong> {form.getValues().entryDate} {form.getValues().entryTime}</p>
@@ -432,14 +423,11 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-2 uppercase">CLASIFICACIÓN</h4>
-                    <div className="flex gap-2 mb-2">
+                    <h4 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">CLASIFICACIÓN</h4>
+                    <div className="flex gap-2">
                       <Badge variant="secondary" className="text-[10px]">{form.getValues().violenceType}</Badge>
                       <Badge className={cn("text-[10px]", riskOptions.find(o => o.value === form.getValues().riskLevel)?.color)}>{form.getValues().riskLevel}</Badge>
                     </div>
-                    <p><strong>Delito:</strong> {form.getValues().crimeType}</p>
-                    <p><strong>Ubicación:</strong> {form.getValues().location}</p>
-                    <p className="line-clamp-2 italic text-muted-foreground text-xs mt-1">"{form.getValues().description}"</p>
                   </div>
                 </div>
               </div>
