@@ -7,7 +7,11 @@ import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { SettingsView } from './settings-view';
 import { getCases } from '@/lib/store';
-import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown } from 'lucide-react';
+import { 
+  LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, 
+  Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown,
+  Globe, Phone, Mail, Facebook, Instagram
+} from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -113,7 +118,6 @@ export function DashboardView() {
       `"${c.incidentLocation}"`
     ].join(','));
 
-    // UTF-8 BOM para soporte de tildes en Excel
     const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -291,15 +295,47 @@ export function DashboardView() {
         </Tabs>
       </main>
 
-      <footer className="py-8 px-8 border-t bg-white text-center">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            <span className="text-[9px] font-black uppercase tracking-[0.2em]">SISTEMA DE SEGURIDAD PAUCARTAMBO</span>
+      <footer className="py-12 px-8 border-t bg-white">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">SISTEMA DE SEGURIDAD PAUCARTAMBO</span>
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-center md:text-right">
+              República del Perú • Ministerio del Interior • Comisaría PNP Paucartambo © {new Date().getFullYear()}
+            </p>
           </div>
-          <p className="text-[9px] font-bold uppercase tracking-[0.2em]">
-            República del Perú • Ministerio del Interior • Comisaría PNP Paucartambo © {new Date().getFullYear()}
-          </p>
+          
+          <Separator className="opacity-20" />
+          
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-primary font-bold tracking-tight">
+              <span className="text-xs uppercase tracking-[0.3em] opacity-40">Desarrollado por</span>
+              <span className="text-sm">Codex Cusco</span>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                <Globe className="h-3 w-3" /> codexcusco.com
+              </a>
+              <a href="tel:+51972156954" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                <Phone className="h-3 w-3" /> 972 156 954
+              </a>
+              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                <Mail className="h-3 w-3" /> CODEXCUSCO@GMAIL.COM
+              </a>
+            </div>
+            
+            <div className="flex gap-4">
+              <a href="#" className="p-2 bg-muted/30 rounded-full hover:bg-primary hover:text-white transition-all">
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a href="#" className="p-2 bg-muted/30 rounded-full hover:bg-primary hover:text-white transition-all">
+                <Instagram className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
