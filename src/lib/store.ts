@@ -4,6 +4,7 @@ let cases: PoliceCase[] = [
   {
     id: '1',
     caseNumber: 'EXP-2024-001',
+    assignedOfficer: 'SOT1 PNP RAMOS QUISPE',
     origin: 'Denuncia Directa',
     entryDate: '2024-05-15',
     entryTime: '10:30:00',

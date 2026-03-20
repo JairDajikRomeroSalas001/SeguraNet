@@ -14,6 +14,7 @@ export interface PersonData {
 export interface PoliceCase {
   id: string;
   caseNumber: string;
+  assignedOfficer: string;
   // Paso 1: Datos del Expediente
   origin: string;
   entryDate: string;

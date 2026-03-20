@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from 'react';
@@ -17,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
-  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList
+  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
@@ -37,6 +36,7 @@ const personSchema = z.object({
 
 const caseSchema = z.object({
   caseNumber: z.string().min(1, 'Número de expediente requerido'),
+  assignedOfficer: z.string().min(1, 'Oficial asignado requerido'),
   origin: z.string().min(1, 'Origen requerido'),
   entryDate: z.string().min(1, 'Fecha requerida'),
   entryTime: z.string().min(1, 'Hora requerida'),
@@ -252,6 +252,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     resolver: zodResolver(caseSchema),
     defaultValues: {
       caseNumber: '',
+      assignedOfficer: '',
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: getCurrentTimeWithSeconds(),
@@ -297,7 +298,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
-    if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
+    if (step === 1) fieldsToValidate = ['caseNumber', 'assignedOfficer', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
     if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel'];
 
@@ -355,6 +356,13 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                       <FormMessage />
                     </FormItem>
                   )} />
+                  <FormField control={form.control} name="assignedOfficer" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-primary/70" /> Oficial Asignado</FormLabel>
+                      <FormControl><Input placeholder="Grado, Nombres y Apellidos" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <FormField control={form.control} name="origin" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary/70" /> Origen</FormLabel>
@@ -367,27 +375,27 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                       <FormMessage />
                     </FormItem>
                   )} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="entryDate" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2"><Calendar className="h-4 w-4 text-primary/70" /> Fecha de Ingreso</FormLabel>
-                      <FormControl><Input type="date" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="entryTime" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso (HH:MM:SS)</FormLabel>
-                      <FormControl><Input type="time" step="1" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="entryDate" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2"><Calendar className="h-4 w-4 text-primary/70" /> Fecha</FormLabel>
+                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="entryTime" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora (HH:MM:SS)</FormLabel>
+                        <FormControl><Input type="time" step="1" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
                 </div>
                 <Alert className="bg-blue-50 border-blue-200">
                   <Info className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800 text-xs">
-                    El número de expediente se llena manualmente siguiendo el formato <strong>EXP-AÑO-CORRELATIVO</strong>. Asegúrese de verificar el origen del documento antes de continuar.
+                    Ingrese el número de expediente oficial y asegúrese de registrar correctamente al personal policial responsable de la intervención.
                   </AlertDescription>
                 </Alert>
               </div>
