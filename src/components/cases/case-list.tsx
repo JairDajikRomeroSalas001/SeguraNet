@@ -65,9 +65,13 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     if (selectedCase && newStatus) {
       updateCaseStatus(selectedCase.id, newStatus);
       toast({ title: "Estado Actualizado", description: `Expediente ${selectedCase.caseNumber} actualizado con éxito.` });
-      onUpdate();
+      
+      // Limpiar estados en orden para evitar bloqueos de UI
       setShowConfirmStatus(false);
       setSelectedCase(null);
+      
+      // Notificar al padre para refrescar la lista
+      onUpdate();
     }
   };
 
