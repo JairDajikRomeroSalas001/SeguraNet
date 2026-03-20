@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { getCases } from '@/lib/store';
 import { 
   LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, 
   Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown,
-  Globe, Phone, Mail, Facebook, Instagram
+  Globe, Phone, Mail, Facebook, Instagram, Twitter, Linkedin
 } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function DashboardView() {
   const { user, logout } = useAuth();
@@ -44,6 +47,8 @@ export function DashboardView() {
     startDate: '',
     endDate: '',
   });
+
+  const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
 
   const applyFilters = useCallback((casesToFilter: PoliceCase[], filters: SearchFilters) => {
     let result = [...casesToFilter];
@@ -174,8 +179,17 @@ export function DashboardView() {
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <header className="bg-primary text-primary-foreground py-4 px-8 flex justify-between items-center shadow-[0_4px_20px_rgba(54,71,125,0.2)] sticky top-0 z-50 backdrop-blur-md bg-primary/95">
         <div className="flex items-center gap-4 group cursor-default">
-          <div className="bg-white/10 p-2.5 rounded-2xl transition-transform group-hover:scale-110 duration-300">
-            <ShieldCheck className="h-7 w-7 text-white" />
+          <div className="bg-white p-1.5 rounded-xl transition-transform group-hover:scale-110 duration-300 w-12 h-12 flex items-center justify-center overflow-hidden">
+            {pnpLogo && (
+              <Image 
+                src={pnpLogo.imageUrl} 
+                alt="PNP Logo" 
+                width={40} 
+                height={40} 
+                className="object-contain"
+                data-ai-hint={pnpLogo.imageHint}
+              />
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
@@ -184,7 +198,7 @@ export function DashboardView() {
             </h1>
             <div className="flex items-center gap-2 text-[10px] text-white/60 uppercase tracking-widest font-bold">
               <Shield className="h-3 w-3" />
-              Ministerio del Interior • PNP Paucartambo
+              PNP Paucartambo • Ministerio del Interior
             </div>
           </div>
         </div>
@@ -295,46 +309,82 @@ export function DashboardView() {
         </Tabs>
       </main>
 
-      <footer className="py-12 px-8 border-t bg-white">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">SISTEMA DE SEGURIDAD PAUCARTAMBO</span>
+      <footer className="py-16 px-8 border-t bg-white">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="flex items-center gap-4 group">
+              <div className="w-16 h-16 bg-muted/20 p-2 rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500 overflow-hidden flex items-center justify-center">
+                {pnpLogo && (
+                  <Image 
+                    src={pnpLogo.imageUrl} 
+                    alt="PNP Footer" 
+                    width={50} 
+                    height={50} 
+                    className="object-contain"
+                    data-ai-hint={pnpLogo.imageHint}
+                  />
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Sistema Oficial de Seguridad</span>
+                <span className="text-xs font-bold text-muted-foreground">República del Perú • PNP Paucartambo © {new Date().getFullYear()}</span>
+              </div>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-center md:text-right">
-              República del Perú • Ministerio del Interior • Comisaría PNP Paucartambo © {new Date().getFullYear()}
-            </p>
+
+            <div className="flex gap-4">
+              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Twitter className="h-5 w-5" />
+              </a>
+              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Linkedin className="h-5 w-5" />
+              </a>
+            </div>
           </div>
           
           <Separator className="opacity-20" />
           
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-primary font-bold tracking-tight">
-              <span className="text-xs uppercase tracking-[0.3em] opacity-40">Desarrollado por</span>
-              <span className="text-sm">Codex Cusco</span>
+          <div className="flex flex-col items-center gap-6 text-center">
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-primary font-bold tracking-tight">
+                <span className="text-xs uppercase tracking-[0.3em] opacity-40">Desarrollado con excelencia por</span>
+                <span className="text-lg font-black tracking-widest text-primary">CODEX CUSCO</span>
+              </div>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                <Globe className="h-3 w-3" /> codexcusco.com
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-3xl">
+              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
+                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                  <Globe className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest">codexcusco.com</span>
               </a>
-              <a href="tel:+51972156954" className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                <Phone className="h-3 w-3" /> 972 156 954
+              
+              <a href="tel:+51972156954" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
+                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                  <Phone className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest">972 156 954</span>
               </a>
-              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                <Mail className="h-3 w-3" /> CODEXCUSCO@GMAIL.COM
+              
+              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
+                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-wrap break-all px-2">CODEXCUSCO@GMAIL.COM</span>
               </a>
             </div>
-            
-            <div className="flex gap-4">
-              <a href="#" className="p-2 bg-muted/30 rounded-full hover:bg-primary hover:text-white transition-all">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2 bg-muted/30 rounded-full hover:bg-primary hover:text-white transition-all">
-                <Instagram className="h-4 w-4" />
-              </a>
-            </div>
+          </div>
+
+          <div className="pt-4 text-center">
+             <p className="text-[9px] font-medium text-muted-foreground/50 uppercase tracking-[0.5em]">
+               Innovación Digital al Servicio de la Ciudadanía
+             </p>
           </div>
         </div>
       </footer>

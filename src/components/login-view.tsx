@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -6,14 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, User, Lock, AlertCircle, Shield, Globe, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, User, Lock, AlertCircle, Shield, Globe, Phone, Mail, Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Image from 'next/image';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function LoginView() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
+
+  const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +37,17 @@ export function LoginView() {
       
       <div className="w-full max-w-md space-y-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700 mb-12">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary text-white mb-2 shadow-[0_0_40px_rgba(54,71,125,0.3)] border-4 border-white transition-transform hover:scale-105 duration-300">
-            <ShieldCheck className="h-12 w-12" />
+          <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-white p-2 shadow-[0_0_40px_rgba(54,71,125,0.3)] border-4 border-white transition-transform hover:scale-105 duration-300 overflow-hidden">
+            {pnpLogo && (
+              <Image 
+                src={pnpLogo.imageUrl} 
+                alt="Logo PNP" 
+                width={100} 
+                height={100} 
+                className="object-contain"
+                data-ai-hint={pnpLogo.imageHint}
+              />
+            )}
           </div>
           <div className="space-y-1">
             <h1 className="text-4xl font-extrabold text-primary tracking-tight">Paucartambo Segura</h1>
@@ -106,24 +120,41 @@ export function LoginView() {
       </div>
       
       {/* Footer Branding Codex Cusco */}
-      <div className="w-full max-w-lg space-y-4 text-center opacity-70 hover:opacity-100 transition-opacity duration-500">
+      <div className="w-full max-w-lg space-y-6 text-center opacity-90 transition-opacity duration-500 mb-8">
         <p className="text-[9px] text-muted-foreground uppercase tracking-[0.4em] font-bold">
-          Gobierno del Perú • Ministerio del Interior • PNP Paucartambo © {new Date().getFullYear()}
+          República del Perú • Ministerio del Interior • PNP Paucartambo © {new Date().getFullYear()}
         </p>
-        <div className="space-y-2">
+        
+        <div className="space-y-4">
           <div className="flex items-center justify-center gap-2">
             <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Desarrollado por</span>
-            <span className="text-xs font-black text-primary tracking-widest">CODEX CUSCO</span>
+            <span className="text-sm font-black text-primary tracking-widest">CODEX CUSCO</span>
           </div>
-          <div className="flex flex-wrap justify-center gap-4 text-[10px] font-bold text-muted-foreground/80">
-            <a href="https://codexcusco.com" target="_blank" className="hover:text-primary flex items-center gap-1">
+          
+          <div className="flex flex-wrap justify-center gap-6 text-[10px] font-bold text-muted-foreground/80">
+            <a href="https://codexcusco.com" target="_blank" className="hover:text-primary flex items-center gap-1.5 transition-colors">
               <Globe className="h-3 w-3" /> codexcusco.com
             </a>
-            <a href="tel:+51972156954" className="hover:text-primary flex items-center gap-1">
+            <a href="tel:+51972156954" className="hover:text-primary flex items-center gap-1.5 transition-colors">
               <Phone className="h-3 w-3" /> 972 156 954
             </a>
-            <a href="mailto:CODEXCUSCO@GMAIL.COM" className="hover:text-primary flex items-center gap-1">
+            <a href="mailto:CODEXCUSCO@GMAIL.COM" className="hover:text-primary flex items-center gap-1.5 transition-colors">
               <Mail className="h-3 w-3" /> CODEXCUSCO@GMAIL.COM
+            </a>
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <a href="#" className="p-2 bg-white rounded-full shadow-sm hover:bg-primary hover:text-white transition-all">
+              <Facebook className="h-4 w-4" />
+            </a>
+            <a href="#" className="p-2 bg-white rounded-full shadow-sm hover:bg-primary hover:text-white transition-all">
+              <Instagram className="h-4 w-4" />
+            </a>
+            <a href="#" className="p-2 bg-white rounded-full shadow-sm hover:bg-primary hover:text-white transition-all">
+              <Twitter className="h-4 w-4" />
+            </a>
+            <a href="#" className="p-2 bg-white rounded-full shadow-sm hover:bg-primary hover:text-white transition-all">
+              <Linkedin className="h-4 w-4" />
             </a>
           </div>
         </div>

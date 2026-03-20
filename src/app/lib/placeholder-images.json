@@ -1,4 +1,11 @@
 
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "pnp-logo",
+      "description": "Escudo oficial de la Policía Nacional del Perú",
+      "imageUrl": "https://picsum.photos/seed/pnp77/400/400",
+      "imageHint": "police shield"
+    }
+  ]
 }
