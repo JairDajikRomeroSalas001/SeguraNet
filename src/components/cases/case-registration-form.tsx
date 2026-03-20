@@ -138,109 +138,133 @@ const PersonFormFields = ({
   form: UseFormReturn<FormData>,
   validateDni: (type: 'victim' | 'aggressor') => void,
   isValidating: boolean
-}) => (
-  <div className="space-y-4 p-5 rounded-xl border bg-card/50 shadow-sm">
-    <div className="flex items-center justify-between border-b pb-2 mb-4">
-      <h4 className={`text-xs font-bold ${color} uppercase tracking-widest flex items-center gap-2`}>
-        <User className="h-4 w-4" /> {title}
-      </h4>
+}) => {
+  // Función para permitir solo números en tiempo real
+  const handleNumericInput = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (val: string) => void) => {
+    const value = e.target.value.replace(/\D/g, ''); // Elimina todo lo que no sea dígito
+    fieldChange(value);
+  };
+
+  return (
+    <div className="space-y-4 p-5 rounded-xl border bg-card/50 shadow-sm">
+      <div className="flex items-center justify-between border-b pb-2 mb-4">
+        <h4 className={`text-xs font-bold ${color} uppercase tracking-widest flex items-center gap-2`}>
+          <User className="h-4 w-4" /> {title}
+        </h4>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name={`${type}.dni`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>DNI (8 dígitos)</FormLabel>
+              <div className="flex gap-2">
+                <FormControl>
+                  <Input 
+                    placeholder="8 dígitos numéricos" 
+                    maxLength={8} 
+                    inputMode="numeric"
+                    {...field} 
+                    onChange={(e) => handleNumericInput(e, field.onChange)}
+                  />
+                </FormControl>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  size="icon" 
+                  onClick={() => validateDni(type)}
+                  disabled={isValidating}
+                >
+                  <Search className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${type}.name`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nombres y Apellidos</FormLabel>
+              <FormControl><Input placeholder="Nombre Completo" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <FormField
+          control={form.control}
+          name={`${type}.phone`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><Phone className="h-3 w-3" /> Celular (9 dígitos, empieza con 9)</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="999888777" 
+                  maxLength={9} 
+                  inputMode="numeric"
+                  {...field} 
+                  onChange={(e) => handleNumericInput(e, field.onChange)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${type}.street`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Calle / Jirón / Av.</FormLabel>
+              <FormControl><Input placeholder="Ej: Jr. Cusco" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${type}.number`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Número</FormLabel>
+              <FormControl><Input placeholder="123 o S/N" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name={`${type}.district`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Distrito</FormLabel>
+              <FormControl><Input placeholder="Ej: Paucartambo" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${type}.reference`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><Map className="h-3 w-3" /> Referencia</FormLabel>
+              <FormControl><Input placeholder="Ej: Cerca al mercado" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <FormField
-        control={form.control}
-        name={`${type}.dni`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>DNI (8 dígitos)</FormLabel>
-            <div className="flex gap-2">
-              <FormControl><Input placeholder="8 dígitos numéricos" maxLength={8} {...field} /></FormControl>
-              <Button 
-                type="button" 
-                variant="secondary" 
-                size="icon" 
-                onClick={() => validateDni(type)}
-                disabled={isValidating}
-              >
-                <Search className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name={`${type}.name`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Nombres y Apellidos</FormLabel>
-            <FormControl><Input placeholder="Nombre Completo" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <FormField
-        control={form.control}
-        name={`${type}.phone`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-2"><Phone className="h-3 w-3" /> Celular (9 dígitos, empieza con 9)</FormLabel>
-            <FormControl><Input placeholder="999888777" maxLength={9} {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name={`${type}.street`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Calle / Jirón / Av.</FormLabel>
-            <FormControl><Input placeholder="Ej: Jr. Cusco" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name={`${type}.number`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Número</FormLabel>
-            <FormControl><Input placeholder="123 o S/N" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <FormField
-        control={form.control}
-        name={`${type}.district`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Distrito</FormLabel>
-            <FormControl><Input placeholder="Ej: Paucartambo" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name={`${type}.reference`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-2"><Map className="h-3 w-3" /> Referencia</FormLabel>
-            <FormControl><Input placeholder="Ej: Cerca al mercado" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
   const [step, setStep] = useState(1);
