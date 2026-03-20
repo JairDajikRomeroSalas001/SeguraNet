@@ -39,7 +39,7 @@ export function DashboardView() {
       result = result.filter(c => c.status === filters.status);
     }
 
-    if (filters.crimeType) {
+    if (filters.type) {
       result = result.filter(c => c.crimeType.toLowerCase().includes(filters.type.toLowerCase()));
     }
 

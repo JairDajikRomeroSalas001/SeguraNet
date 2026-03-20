@@ -61,13 +61,18 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
   const [isValidatingDni, setIsValidatingDni] = useState({ victim: false, aggressor: false });
   const { toast } = useToast();
 
+  const getCurrentTimeWithSeconds = () => {
+    const now = new Date();
+    return now.toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
       caseNumber: '',
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
-      entryTime: new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      entryTime: getCurrentTimeWithSeconds(),
       victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       crimeType: '',
@@ -86,7 +91,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
     setIsValidatingDni(prev => ({ ...prev, [type]: true }));
     
-    // Simulación de validación (RENIEC)
     setTimeout(() => {
       setIsValidatingDni(prev => ({ ...prev, [type]: false }));
       const mockNames: Record<string, string> = {
@@ -256,7 +260,28 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   <FormField control={form.control} name="origin" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary/70" /> Origen</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione Entidad" /></SelectTrigger></FormControl><SelectContent>{originOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent></Select>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccione Entidad" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {originOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="entryDate" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2"><Calendar className="h-4 w-4 text-primary/70" /> Fecha de Ingreso</FormLabel>
+                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="entryTime" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso</FormLabel>
+                      <FormControl><Input type="time" step="1" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -264,7 +289,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 <Alert className="bg-blue-50 border-blue-200">
                   <Info className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800 text-xs">
-                    El número se llena manualmente siguiendo el formato <strong>EXP-AÑO-CORRELATIVO</strong>. Verifique el origen del documento.
+                    El número de expediente se llena manualmente siguiendo el formato <strong>EXP-AÑO-CORRELATIVO</strong>. Asegúrese de verificar el origen del documento antes de continuar.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -305,13 +330,14 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 </div>
                 <div className="grid grid-cols-1 gap-4 text-sm">
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
-                    <Button variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /></Button>
                     <h4 className="text-xs font-bold text-primary mb-2">EXPEDIENTE</h4>
                     <p><strong>Número:</strong> {form.getValues().caseNumber}</p>
                     <p><strong>Origen:</strong> {form.getValues().origin}</p>
+                    <p><strong>Ingreso:</strong> {form.getValues().entryDate} {form.getValues().entryTime}</p>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
-                    <Button variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /></Button>
                     <div className="grid grid-cols-2 gap-4">
                       <div><h4 className="text-[10px] font-bold text-primary">VÍCTIMA</h4><p>{form.getValues().victim.name} ({form.getValues().victim.dni})</p></div>
                       <div><h4 className="text-[10px] font-bold text-destructive">AGRESOR</h4><p>{form.getValues().aggressor.name} ({form.getValues().aggressor.dni})</p></div>
