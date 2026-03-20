@@ -5,7 +5,7 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, Phone, MapPin, AlertTriangle, ClipboardList, UserCheck, History } from 'lucide-react';
+import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, UserCheck, AlertTriangle, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -64,14 +64,18 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const confirmUpdateStatus = () => {
     if (selectedCase && newStatus) {
       updateCaseStatus(selectedCase.id, newStatus);
-      toast({ title: "Estado Actualizado", description: `Expediente ${selectedCase.caseNumber} actualizado con éxito.` });
       
-      // Limpiar estados en orden para evitar bloqueos de UI
+      // Cerrar primero el alert y luego el detalle para evitar bloqueos de Radix
       setShowConfirmStatus(false);
-      setSelectedCase(null);
       
-      // Notificar al padre para refrescar la lista
-      onUpdate();
+      setTimeout(() => {
+        setSelectedCase(null);
+        toast({ 
+          title: "Estado Actualizado", 
+          description: `Expediente ${selectedCase.caseNumber} actualizado con éxito.` 
+        });
+        onUpdate();
+      }, 100);
     }
   };
 
@@ -107,7 +111,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 <TableCell className="font-mono text-xs font-bold">{c.caseNumber}</TableCell>
                 <TableCell className="text-xs">{c.victim.name}</TableCell>
                 <TableCell className="text-xs">{c.aggressor.name}</TableCell>
-                <TableCell className="text-xs">{c.violenceType}</TableCell>
+                <TableCell className="text-xs max-w-[150px] truncate" title={c.violenceType}>{c.violenceType}</TableCell>
                 <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer || 'Sin asignar'}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`text-[10px] ${riskColors[c.riskLevel]}`}>
@@ -119,7 +123,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     {statusConfig[c.status].icon} {c.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-[10px] text-muted-foreground">
+                <TableCell className="text-[10px] text-muted-foreground whitespace-nowrap">
                   <div className="flex flex-col">
                     <span>{format(new Date(c.updatedAt), 'dd/MM/yyyy')}</span>
                     <span className="font-mono">{format(new Date(c.updatedAt), 'HH:mm:ss')}</span>
@@ -181,7 +185,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                  <ClipboardList className="h-4 w-4" /> Detalles del Incidente
+                  <FileText className="h-4 w-4" /> Detalles del Incidente
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                   <p className="text-sm"><strong>Fecha:</strong> {selectedCase.incidentDate}</p>
@@ -235,7 +239,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
           <AlertDialogHeader>
             <AlertDialogTitle>¿Está seguro de cambiar el estado?</AlertDialogTitle>
             <AlertDialogDescription>
-              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada con la fecha y hora actual.
+              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada con el oficial <strong>{selectedCase?.assignedOfficer}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
