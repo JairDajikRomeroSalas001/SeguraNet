@@ -1,4 +1,4 @@
-export type CaseStatus = 'Pendiente' | 'En Proceso' | 'Resuelto' | 'Cerrado';
+export type CaseStatus = 'Pendiente' | 'En Proceso' | 'Resuelto' | 'Cerrado' | 'Archivado';
 export type RiskLevel = 'Leve' | 'Moderado' | 'Severo' | 'Muy Severo';
 
 export interface PersonData {

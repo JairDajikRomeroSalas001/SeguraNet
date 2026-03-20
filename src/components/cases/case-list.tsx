@@ -5,7 +5,7 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, UserCheck, AlertTriangle, History } from 'lucide-react';
+import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, UserCheck, AlertTriangle, History, Archive } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -29,6 +29,7 @@ const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }>
   'En Proceso': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: <ShieldAlert className="h-3 w-3" /> },
   'Resuelto': { color: 'bg-green-100 text-green-800 border-green-200', icon: <CheckCircle2 className="h-3 w-3" /> },
   'Cerrado': { color: 'bg-gray-100 text-gray-800 border-gray-200', icon: <Lock className="h-3 w-3" /> },
+  'Archivado': { color: 'bg-slate-100 text-slate-800 border-slate-200', icon: <Archive className="h-3 w-3" /> },
 };
 
 const riskColors: Record<string, string> = {
@@ -38,61 +39,48 @@ const riskColors: Record<string, string> = {
   'Muy Severo': 'bg-red-100 text-red-700 border-red-200',
 };
 
-const riskFactorOptions = [
-  { id: "amenazas_muerte", label: "Amenazas de muerte" },
-  { id: "consumo_alcohol_drogas", label: "Consumo de alcohol o drogas" },
-  { id: "menores_involucrados", label: "Menores involucrados" },
-  { id: "antecedentes_violencia", label: "Antecedentes de violencia" },
-  { id: "uso_armas", label: "Uso de armas" },
-  { id: "violencia_escalada", label: "Violencia escalada" },
-  { id: "aislamiento_victima", label: "Aislamiento de la víctima" },
-  { id: "control_economico", label: "Control económico" },
-];
-
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
   const [selectedCase, setSelectedCase] = useState<PoliceCase | null>(null);
   const [newStatus, setNewStatus] = useState<CaseStatus | null>(null);
   const [showConfirmStatus, setShowConfirmStatus] = useState(false);
   const { toast } = useToast();
 
-  // LIMPIADOR DE SEGURIDAD: Evita que la interfaz se bloquee si Radix UI no limpia el body
+  // LIMPIADOR DE SEGURIDAD EXTREMO: Asegura que el body siempre sea interactuable tras cerrar cualquier diálogo
   useEffect(() => {
     if (!selectedCase && !showConfirmStatus) {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
+      const cleanup = () => {
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+      };
+      const timer = setTimeout(cleanup, 100);
+      return () => clearTimeout(timer);
     }
   }, [selectedCase, showConfirmStatus]);
 
   const handleUpdateStatusClick = () => {
     if (newStatus && newStatus !== selectedCase?.status) {
       setShowConfirmStatus(true);
-    } else if (!newStatus) {
-      toast({ variant: "destructive", title: "Atención", description: "Seleccione un nuevo estado primero." });
     }
   };
 
   const confirmUpdateStatus = () => {
     if (selectedCase && newStatus) {
-      // 1. Ejecutar cambio en el store de datos
       updateCaseStatus(selectedCase.id, newStatus);
+      const caseNum = selectedCase.caseNumber;
       
-      // 2. Limpiar estados y cerrar todo
+      // Cerrar diálogos ANTES de refrescar para evitar bloqueos de UI
       setShowConfirmStatus(false);
+      setSelectedCase(null);
+      setNewStatus(null);
       
-      // Usamos un pequeño delay para asegurar que los overlays desaparezcan antes de refrescar
-      setTimeout(() => {
-        const caseNum = selectedCase.caseNumber;
-        setSelectedCase(null);
-        setNewStatus(null);
-        
-        // 3. Notificar al padre para refrescar la vista
+      // Usar requestAnimationFrame para asegurar que el DOM se limpie antes del refresh
+      requestAnimationFrame(() => {
         onUpdate();
-        
         toast({ 
           title: "Estado Actualizado", 
-          description: `Expediente ${caseNum} actualizado con éxito.` 
+          description: `Expediente ${caseNum} actualizado a "${newStatus}".` 
         });
-      }, 50);
+      });
     }
   };
 
@@ -159,9 +147,9 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Expediente: {selectedCase?.caseNumber}
+              <FileText className="h-5 w-5" /> Detalle del Expediente: {selectedCase?.caseNumber}
             </DialogTitle>
-            <DialogDescription>Detalle completo del caso registrado y gestión de estado institucional.</DialogDescription>
+            <DialogDescription>Información registrada en el sistema de la Comisaría de Paucartambo.</DialogDescription>
           </DialogHeader>
 
           {selectedCase && (
@@ -185,52 +173,51 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Oficial Asignado</h4>
+                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Oficial Responsable</h4>
                   <p className="text-sm font-semibold uppercase">{selectedCase.assignedOfficer}</p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Clasificación</h4>
+                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Tipo de Violencia</h4>
                   <p className="text-sm font-semibold">{selectedCase.violenceType}</p>
                 </div>
                 <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Última Modificación</h4>
+                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Modificado por última vez</h4>
                   <p className="text-xs font-mono">{format(new Date(selectedCase.updatedAt), "dd/MM/yyyy 'a las' HH:mm:ss", { locale: es })}</p>
                 </div>
               </div>
 
               <Separator />
 
-              <div className="space-y-4">
+              <div className="space-y-2">
                 <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                  <FileText className="h-4 w-4" /> Detalles del Incidente
+                  <FileText className="h-4 w-4" /> Hechos Reportados
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
-                  <p className="text-sm"><strong>Fecha:</strong> {selectedCase.incidentDate}</p>
-                  <p className="text-sm"><strong>Hora:</strong> {selectedCase.incidentTime}</p>
-                  <div className="md:col-span-2">
-                    <p className="text-sm"><strong>Lugar:</strong> {selectedCase.incidentLocation}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <p className="text-sm font-bold mt-2">Descripción de hechos:</p>
-                    <p className="text-sm text-muted-foreground mt-1 bg-white p-3 rounded border italic leading-relaxed">
-                      {selectedCase.incidentDescription}
-                    </p>
-                  </div>
+                <div className="bg-muted/10 p-4 rounded-xl border">
+                  <p className="text-sm text-muted-foreground italic leading-relaxed">
+                    {selectedCase.incidentDescription}
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 pt-4 border-t bg-muted/5 p-4 rounded-lg">
-                <p className="text-sm font-bold">Estado Actual:</p>
-                <Select value={newStatus || selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
-                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pendiente">Pendiente</SelectItem>
-                    <SelectItem value="En Proceso">En Proceso</SelectItem>
-                    <SelectItem value="Resuelto">Resuelto</SelectItem>
-                    <SelectItem value="Cerrado">Cerrado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button onClick={handleUpdateStatusClick} disabled={newStatus === selectedCase.status}>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground">Estado del Proceso</label>
+                  <Select value={newStatus || selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
+                    <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                      <SelectItem value="En Proceso">En Proceso</SelectItem>
+                      <SelectItem value="Resuelto">Resuelto</SelectItem>
+                      <SelectItem value="Cerrado">Cerrado</SelectItem>
+                      <SelectItem value="Archivado">Archivado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={handleUpdateStatusClick} 
+                  disabled={!newStatus || newStatus === selectedCase.status}
+                  className="mt-auto"
+                >
                   Actualizar Estado
                 </Button>
               </div>
@@ -243,15 +230,15 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       <AlertDialog open={showConfirmStatus} onOpenChange={setShowConfirmStatus}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Está seguro de cambiar el estado?</AlertDialogTitle>
+            <AlertDialogTitle>¿Confirmar cambio de estado?</AlertDialogTitle>
             <AlertDialogDescription>
-              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada bajo la supervisión del oficial <strong>{selectedCase?.assignedOfficer}</strong>.
+              Usted está por cambiar el estado del expediente <strong>{selectedCase?.caseNumber}</strong> a <strong>"{newStatus}"</strong>. Esta acción quedará registrada en el historial del sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUpdateStatus} className="bg-primary hover:bg-primary/90">
-              Confirmar Cambio
+              Sí, Actualizar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Calendar, X, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Calendar, X, ShieldAlert, AlertTriangle, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -82,10 +82,11 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="Pendiente">Pendiente / Nuevo</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
                   <SelectItem value="En Proceso">En Proceso</SelectItem>
                   <SelectItem value="Resuelto">Resuelto</SelectItem>
                   <SelectItem value="Cerrado">Cerrado</SelectItem>
+                  <SelectItem value="Archivado">Archivado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -99,7 +100,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                   <SelectValue placeholder="Nivel de Riesgo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los Riesgos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {riskOptions.map(opt => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
@@ -116,7 +117,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                   <SelectValue placeholder="Tipo de Violencia" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los Tipos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {violenceOptions.map(opt => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}

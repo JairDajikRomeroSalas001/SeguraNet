@@ -83,7 +83,7 @@ export function DashboardView() {
   const refreshCases = useCallback(() => {
     const updated = getCases();
     setAllCases(updated);
-    // Aplicamos los filtros actuales a la nueva data
+    // Aplicamos los filtros activos a la nueva data para que el UI se actualice
     applyFilters(updated, activeFilters);
   }, [activeFilters, applyFilters]);
 
@@ -94,136 +94,73 @@ export function DashboardView() {
 
   const handleExportCSV = () => {
     if (filteredCases.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Error de exportación",
-        description: "No hay datos filtrados para exportar."
-      });
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay denuncias para exportar con los filtros actuales." });
       return;
     }
 
-    const headers = [
-      "EXPEDIENTE",
-      "FECHA REGISTRO",
-      "HORA REGISTRO",
-      "OFICIAL ASIGNADO",
-      "NOMBRE VICTIMA",
-      "DNI VICTIMA",
-      "CELULAR VICTIMA",
-      "NOMBRE AGRESOR",
-      "DNI AGRESOR",
-      "TIPO VIOLENCIA",
-      "NIVEL RIESGO",
-      "ESTADO",
-      "FECHA INCIDENTE",
-      "LUGAR INCIDENTE",
-      "DESCRIPCION"
-    ];
-
-    const csvRows = filteredCases.map(c => [
+    const headers = ["EXPEDIENTE", "OFICIAL ASIGNADO", "VÍCTIMA", "AGRESOR", "TIPO VIOLENCIA", "RIESGO", "ESTADO", "FECHA REGISTRO", "LUGAR INCIDENTE"];
+    const rows = filteredCases.map(c => [
       `"${c.caseNumber}"`,
-      `"${c.entryDate}"`,
-      `"${c.entryTime}"`,
       `"${c.assignedOfficer.replace(/"/g, '""')}"`,
       `"${c.victim.name.replace(/"/g, '""')}"`,
-      `"${c.victim.dni}"`,
-      `"${c.victim.phone}"`,
       `"${c.aggressor.name.replace(/"/g, '""')}"`,
-      `"${c.aggressor.dni}"`,
       `"${c.violenceType}"`,
       `"${c.riskLevel}"`,
       `"${c.status}"`,
-      `"${c.incidentDate}"`,
-      `"${c.incidentLocation.replace(/"/g, '""')}"`,
-      `"${c.incidentDescription.replace(/"/g, '""').replace(/\n/g, ' ')}"`
+      `"${c.entryDate} ${c.entryTime}"`,
+      `"${c.incidentLocation.replace(/"/g, '""')}"`
     ].join(','));
 
-    // Marcador BOM para UTF-8 y separador explícito para Excel
-    const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + csvRows.join('\n');
-    
+    // Marcador BOM UTF-8 y sep=, para compatibilidad total con Excel en español
+    const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Reporte_Paucartambo_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.href = url;
+    link.setAttribute("download", `Reporte_Denuncias_Excel_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    toast({
-      title: "Excel Exportado",
-      description: "El reporte se ha generado con codificación corregida para tildes."
-    });
+    toast({ title: "Excel Generado", description: "El reporte se ha descargado con formato compatible para Excel." });
   };
 
   const handleExportPDF = () => {
     if (filteredCases.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Error de exportación",
-        description: "No hay datos filtrados para exportar."
-      });
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay denuncias para exportar." });
       return;
     }
 
     const doc = new jsPDF('landscape');
-    const timestamp = new Date().toLocaleString();
-
     doc.setFontSize(16);
     doc.setTextColor(54, 71, 125); 
-    doc.text('COMISARIA DE PAUCARTAMBO - CUSCO', 14, 20);
+    doc.text('COMISARIA PNP PAUCARTAMBO', 14, 20);
+    doc.setFontSize(10);
+    doc.text('REPORTE GENERAL DE DENUNCIAS REGISTRADAS', 14, 28);
     
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text('REPORTE OFICIAL DE DENUNCIAS REGISTRADAS', 14, 28);
-    
-    doc.setFontSize(9);
-    doc.setTextColor(150);
-    doc.text(`Generado por: ${user?.username} | Fecha y Hora: ${timestamp}`, 14, 35);
-
-    const tableHeaders = [
-      ["EXPEDIENTE", "FECHA", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]
-    ];
-
+    const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO", "ACTUALIZADO"]];
     const tableData = filteredCases.map(c => [
       c.caseNumber,
-      c.entryDate,
       c.victim.name,
       c.aggressor.name,
       c.violenceType,
       c.riskLevel,
       c.assignedOfficer,
-      c.status
+      c.status,
+      format(new Date(c.updatedAt), 'dd/MM/yy HH:mm')
     ]);
 
     (doc as any).autoTable({
       head: tableHeaders,
       body: tableData,
-      startY: 40,
+      startY: 35,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-      headStyles: { 
-        fillColor: [54, 71, 125], 
-        textColor: 255, 
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 30 },
-        4: { cellWidth: 40 },
-        5: { halign: 'center' },
-        7: { halign: 'center' }
-      }
+      headStyles: { fillColor: [54, 71, 125] },
+      styles: { fontSize: 8 }
     });
 
     doc.save(`Reporte_Oficial_Paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
-
-    toast({
-      title: "PDF Exportado",
-      description: "El reporte oficial ha sido descargado."
-    });
+    toast({ title: "PDF Generado", description: "El reporte oficial ha sido descargado." });
   };
 
   return (
@@ -241,7 +178,6 @@ export function DashboardView() {
             <span className="text-sm font-semibold">{user?.username}</span>
             <span className="text-[10px] uppercase tracking-wider opacity-80">Oficial Administrativo</span>
           </div>
-          <div className="bg-white/10 p-2 rounded-full"><UserIcon className="h-5 w-5" /></div>
           <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/10 ml-2">
             <LogOut className="h-5 w-5" />
           </Button>
@@ -263,17 +199,13 @@ export function DashboardView() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-white font-bold text-xs h-9 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                  >
+                  <Button variant="outline" size="sm" className="bg-white font-bold text-xs h-9 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
                     <Download className="h-4 w-4 mr-2" /> EXPORTAR DATOS
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2 py-2">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (CSV Corregido)
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (Formato Seguro)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2 py-2">
                     <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF (Reporte Oficial)
@@ -301,7 +233,7 @@ export function DashboardView() {
       </main>
 
       <footer className="py-6 px-6 border-t bg-white text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">
-        República del Perú - Ministerio del Interior - Comisaría Paucartambo © {new Date().getFullYear()}
+        República del Perú - Ministerio del Interior - Comisaría PNP Paucartambo © {new Date().getFullYear()}
       </footer>
     </div>
   );

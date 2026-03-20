@@ -41,7 +41,7 @@ let cases: PoliceCase[] = [
   }
 ];
 
-export const getCases = () => cases;
+export const getCases = () => [...cases]; // Retornar copia para asegurar inmutabilidad al leer
 
 export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt'>) => {
   const nextId = (cases.length + 1).toString();
