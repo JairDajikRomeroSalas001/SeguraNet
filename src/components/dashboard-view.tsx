@@ -5,8 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
+import { SettingsView } from './settings-view';
 import { getCases } from '@/lib/store';
-import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield } from 'lucide-react';
+import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield, Settings } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -200,45 +201,53 @@ export function DashboardView() {
       <main className="flex-1 container mx-auto py-10 px-6 max-w-7xl animate-in fade-in duration-700">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <TabsList className="bg-white border shadow-sm p-1.5 h-14 rounded-2xl w-full md:w-auto">
+            <TabsList className="bg-white border shadow-sm p-1.5 h-14 rounded-2xl w-full md:w-auto overflow-x-auto">
               <TabsTrigger 
                 value="panel" 
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-8 rounded-xl font-bold transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
               >
                 <LayoutDashboard className="h-4 w-4" /> VISTA GENERAL
               </TabsTrigger>
               <TabsTrigger 
                 value="registro" 
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-8 rounded-xl font-bold transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
               >
                 <FilePlus className="h-4 w-4" /> REGISTRAR DENUNCIA
               </TabsTrigger>
+              <TabsTrigger 
+                value="configuracion" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
+              >
+                <Settings className="h-4 w-4" /> CONFIGURACIÓN
+              </TabsTrigger>
             </TabsList>
             
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="bg-white font-bold h-12 px-6 border-primary/10 text-primary hover:bg-primary/5 transition-all shadow-sm rounded-2xl gap-2">
-                    <Download className="h-4 w-4" /> EXPORTAR
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 rounded-xl p-2 shadow-xl border-primary/10">
-                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-emerald-50 focus:text-emerald-700">
-                    <div className="p-1.5 bg-emerald-100 rounded-md"><FileSpreadsheet className="h-4 w-4" /></div>
-                    <span className="font-bold text-xs uppercase tracking-wider">Exportar a Excel</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-rose-50 focus:text-rose-700">
-                    <div className="p-1.5 bg-rose-100 rounded-md"><FileText className="h-4 w-4" /></div>
-                    <span className="font-bold text-xs uppercase tracking-wider">Reporte PDF Oficial</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {activeTab !== 'configuracion' && (
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="bg-white font-bold h-12 px-6 border-primary/10 text-primary hover:bg-primary/5 transition-all shadow-sm rounded-2xl gap-2">
+                      <Download className="h-4 w-4" /> EXPORTAR
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 rounded-xl p-2 shadow-xl border-primary/10">
+                    <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-emerald-50 focus:text-emerald-700">
+                      <div className="p-1.5 bg-emerald-100 rounded-md"><FileSpreadsheet className="h-4 w-4" /></div>
+                      <span className="font-bold text-xs uppercase tracking-wider">Exportar a Excel</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-rose-50 focus:text-rose-700">
+                      <div className="p-1.5 bg-rose-100 rounded-md"><FileText className="h-4 w-4" /></div>
+                      <span className="font-bold text-xs uppercase tracking-wider">Reporte PDF Oficial</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <div className="h-12 flex items-center px-6 bg-white border border-primary/10 rounded-2xl shadow-sm">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-3">TOTAL</span>
-                <span className="text-xl font-black text-primary">{filteredCases.length}</span>
+                <div className="h-12 flex items-center px-6 bg-white border border-primary/10 rounded-2xl shadow-sm">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-3">TOTAL</span>
+                  <span className="text-xl font-black text-primary">{filteredCases.length}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -250,6 +259,10 @@ export function DashboardView() {
 
           <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CaseRegistrationForm onCaseAdded={() => { refreshCases(); setActiveTab('panel'); }} />
+          </TabsContent>
+
+          <TabsContent value="configuracion" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <SettingsView />
           </TabsContent>
         </Tabs>
       </main>
