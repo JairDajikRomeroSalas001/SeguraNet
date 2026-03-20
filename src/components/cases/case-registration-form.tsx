@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
-  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList
+  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
@@ -300,7 +300,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
     if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel'];
-    if (step === 4) fieldsToValidate = ['incidentDescription', 'incidentDate', 'incidentTime', 'incidentLocation'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
@@ -333,7 +332,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             <FilePlus className="h-5 w-5" /> Registro de Denuncia Policial
           </CardTitle>
           <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div key={s} className={cn(
                 "h-2 w-8 rounded-full transition-all duration-300", 
                 s <= step ? 'bg-white' : 'bg-white/20'
@@ -610,92 +609,12 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 )} />
               </div>
             )}
-
-            {step === 5 && (
-              <div className="space-y-6 animate-in zoom-in-95 fade-in duration-500">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /> Paso 5: Resumen Final</h3>
-                  <Badge className="bg-green-500 text-white border-none">Listo para Guardar</Badge>
-                </div>
-                <div className="grid grid-cols-1 gap-6 text-sm">
-                  <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
-                    <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> DATOS DEL EXPEDIENTE</h4>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                      <p><strong>Número:</strong> {form.getValues().caseNumber}</p>
-                      <p><strong>Origen:</strong> {form.getValues().origin}</p>
-                      <p><strong>Fecha:</strong> {form.getValues().entryDate}</p>
-                      <p><strong>Hora:</strong> {form.getValues().entryTime}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
-                      <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                      <h4 className="text-[10px] font-bold text-primary uppercase mb-3 tracking-widest">VÍCTIMA</h4>
-                      <p className="font-bold text-base">{form.getValues().victim.name}</p>
-                      <p className="text-xs mt-1">DNI: {form.getValues().victim.dni} | Cel: {form.getValues().victim.phone}</p>
-                      <p className="text-[10px] text-muted-foreground mt-2 leading-tight">{form.getValues().victim.street} #{form.getValues().victim.number}, {form.getValues().victim.district}</p>
-                    </div>
-                    <div className="bg-muted/30 p-5 rounded-xl border border-destructive/10 relative group">
-                      <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-destructive" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                      <h4 className="text-[10px] font-bold text-destructive uppercase mb-3 tracking-widest">AGRESOR</h4>
-                      <p className="font-bold text-base">{form.getValues().aggressor.name}</p>
-                      <p className="text-xs mt-1">DNI: {form.getValues().aggressor.dni} | Cel: {form.getValues().aggressor.phone}</p>
-                      <p className="text-[10px] text-muted-foreground mt-2 leading-tight">{form.getValues().aggressor.street} #{form.getValues().aggressor.number}, {form.getValues().aggressor.district}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
-                    <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider">CLASIFICACIÓN Y RIESGO</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Tipo:</span>
-                        <p className="font-semibold">{form.getValues().violenceType}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Riesgo:</span>
-                        <Badge className={cn("text-[10px] uppercase font-bold px-3 py-1", riskOptions.find(o => o.value === form.getValues().riskLevel)?.color)}>
-                          {form.getValues().riskLevel}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
-                    <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(4)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider">DETALLES DEL INCIDENTE</h4>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <p><strong>Fecha Incidente:</strong> {form.getValues().incidentDate}</p>
-                        <p><strong>Hora Incidente:</strong> {form.getValues().incidentTime}</p>
-                      </div>
-                      <p><strong>Lugar:</strong> {form.getValues().incidentLocation}</p>
-                      <p><strong>Descripción:</strong> {form.getValues().incidentDescription}</p>
-                      {form.getValues().riskFactors.length > 0 && (
-                        <div>
-                          <p className="font-bold mb-1">Factores de Riesgo:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {form.getValues().riskFactors.map(id => (
-                              <Badge key={id} variant="secondary" className="text-[10px]">
-                                {riskFactorOptions.find(o => o.id === id)?.label}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             
             <Separator />
             <div className="flex justify-between gap-4">
               {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(step - 1)}><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button>}
               <div className="ml-auto flex gap-2">
-                {step < 5 ? (
+                {step < 4 ? (
                   <Button type="button" onClick={nextStep} className="px-8">Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
                 ) : (
                   <Button type="submit" className="bg-primary hover:bg-primary/90 shadow-xl px-10 h-11 transition-all hover:scale-[1.02]">
