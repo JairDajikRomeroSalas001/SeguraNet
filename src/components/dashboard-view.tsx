@@ -40,7 +40,10 @@ export function DashboardView() {
     }
 
     if (filters.type) {
-      result = result.filter(c => c.crimeType.toLowerCase().includes(filters.type.toLowerCase()));
+      result = result.filter(c => 
+        c.crimeType.toLowerCase().includes(filters.type.toLowerCase()) ||
+        c.violenceType.toLowerCase().includes(filters.type.toLowerCase())
+      );
     }
 
     if (filters.date) {

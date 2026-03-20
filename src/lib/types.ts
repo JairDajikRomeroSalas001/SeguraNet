@@ -21,6 +21,7 @@ export interface PoliceCase {
   victim: PersonData;
   aggressor: PersonData;
   // Paso 3: Clasificación del Incidente
+  violenceType: string;
   crimeType: string;
   location: string;
   description: string;

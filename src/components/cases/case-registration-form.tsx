@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, MapPin, 
-  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map
+  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
@@ -37,6 +37,7 @@ const caseSchema = z.object({
   entryTime: z.string().min(1, 'Hora requerida'),
   victim: personSchema,
   aggressor: personSchema,
+  violenceType: z.string().min(1, 'Tipo de violencia requerido'),
   crimeType: z.string().min(1, 'Tipo de delito requerido'),
   location: z.string().min(1, 'Ubicación requerida'),
   description: z.string().min(10, 'Descripción más detallada requerida'),
@@ -55,6 +56,14 @@ const originOptions = [
   "Juzgado Especializado de Familia",
   "Juzgado Mixto"
 ].sort((a, b) => a.localeCompare(b));
+
+const violenceOptions = [
+  { value: "Violencia física", label: "Violencia física (agresión corporal, golpes, lesiones)" },
+  { value: "Violencia Psicológica", label: "Violencia Psicológica (amenazas, humillaciones, control)" },
+  { value: "Violencia sexual", label: "Violencia sexual (control de recursos, privación económica)" },
+  { value: "Violencia patrimonial", label: "Violencia patrimonial (destrucción de bienes, despojo)" },
+  { value: "Violencia mixta", label: "Violencia mixta (combinación de varios tipos)" },
+];
 
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
   const [step, setStep] = useState(1);
@@ -75,6 +84,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       entryTime: getCurrentTimeWithSeconds(),
       victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
+      violenceType: '',
       crimeType: '',
       location: 'Paucartambo',
       description: '',
@@ -111,7 +121,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
-    if (step === 3) fieldsToValidate = ['crimeType', 'location', 'description', 'incidentDate'];
+    if (step === 3) fieldsToValidate = ['violenceType', 'crimeType', 'location', 'description', 'incidentDate'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(step + 1);
@@ -121,11 +131,11 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     addCase({
       ...values,
       status: 'Pendiente',
-      tags: [values.crimeType, values.origin],
+      tags: [values.crimeType, values.violenceType],
       date: values.incidentDate
     });
     
-    toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado.` });
+    toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado con éxito.` });
     onCaseAdded();
   };
 
@@ -280,7 +290,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   )} />
                   <FormField control={form.control} name="entryTime" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso</FormLabel>
+                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso (con segundos)</FormLabel>
                       <FormControl><Input type="time" step="1" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -306,19 +316,37 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             {step === 3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
+                
+                <FormField control={form.control} name="violenceType" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Tipo de Violencia</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Seleccione el tipo de violencia" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {violenceOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="crimeType" render={({ field }) => (
-                    <FormItem><FormLabel>Delito / Falta</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Delito / Falta Específica</FormLabel><FormControl><Input placeholder="Ej: Agresión física grave" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="incidentDate" render={({ field }) => (
                     <FormItem><FormLabel>Fecha del Incidente</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="location" render={({ field }) => (
-                  <FormItem><FormLabel><MapPin className="h-4 w-4 mr-1 inline" /> Ubicación</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel><MapPin className="h-4 w-4 mr-1 inline" /> Ubicación Exacta</FormLabel><FormControl><Input placeholder="Ej: Plaza de Armas de Paucartambo" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Descripción de los Hechos</FormLabel><FormControl><Textarea className="min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Descripción Detallada de los Hechos</FormLabel><FormControl><Textarea className="min-h-[120px]" placeholder="Relate lo sucedido..." {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
             )}
@@ -326,22 +354,37 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             {step === 4 && (
               <div className="space-y-6 animate-in zoom-in-95 duration-300">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /> Paso 4: Resumen</h3>
+                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /> Paso 4: Resumen para Almacenamiento</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-4 text-sm">
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
-                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /></Button>
-                    <h4 className="text-xs font-bold text-primary mb-2">EXPEDIENTE</h4>
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /> Modificar</Button>
+                    <h4 className="text-xs font-bold text-primary mb-2">DATOS DEL EXPEDIENTE</h4>
                     <p><strong>Número:</strong> {form.getValues().caseNumber}</p>
                     <p><strong>Origen:</strong> {form.getValues().origin}</p>
                     <p><strong>Ingreso:</strong> {form.getValues().entryDate} {form.getValues().entryTime}</p>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
-                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /> Modificar</Button>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><h4 className="text-[10px] font-bold text-primary">VÍCTIMA</h4><p>{form.getValues().victim.name} ({form.getValues().victim.dni})</p></div>
-                      <div><h4 className="text-[10px] font-bold text-destructive">AGRESOR</h4><p>{form.getValues().aggressor.name} ({form.getValues().aggressor.dni})</p></div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-primary">VÍCTIMA</h4>
+                        <p>{form.getValues().victim.name} (DNI: {form.getValues().victim.dni})</p>
+                        <p className="text-[10px] text-muted-foreground">{form.getValues().victim.street} #{form.getValues().victim.number}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-destructive">AGRESOR</h4>
+                        <p>{form.getValues().aggressor.name} (DNI: {form.getValues().aggressor.dni})</p>
+                        <p className="text-[10px] text-muted-foreground">{form.getValues().aggressor.street} #{form.getValues().aggressor.number}</p>
+                      </div>
                     </div>
+                  </div>
+                  <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
+                    <h4 className="text-xs font-bold text-primary mb-2">CLASIFICACIÓN</h4>
+                    <p><strong>Tipo Violencia:</strong> {form.getValues().violenceType}</p>
+                    <p><strong>Delito:</strong> {form.getValues().crimeType}</p>
+                    <p><strong>Fecha Incidente:</strong> {form.getValues().incidentDate}</p>
                   </div>
                 </div>
               </div>
@@ -351,7 +394,13 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             <div className="flex justify-between gap-4">
               {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(step - 1)}><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button>}
               <div className="ml-auto flex gap-2">
-                {step < 4 ? <Button type="button" onClick={nextStep}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button> : <Button type="submit" className="bg-green-600 hover:bg-green-700"><Send className="mr-2 h-5 w-5" /> GUARDAR EN SISTEMA</Button>}
+                {step < 4 ? (
+                  <Button type="button" onClick={nextStep}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                ) : (
+                  <Button type="submit" className="bg-green-600 hover:bg-green-700 shadow-md">
+                    <Send className="mr-2 h-5 w-5" /> GUARDAR EN SISTEMA
+                  </Button>
+                )}
               </div>
             </div>
           </form>
