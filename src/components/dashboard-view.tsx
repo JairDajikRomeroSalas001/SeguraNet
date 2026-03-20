@@ -11,7 +11,7 @@ import { getCases } from '@/lib/store';
 import { 
   LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, 
   Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown,
-  Globe, Phone, Mail, Facebook, Instagram, Twitter, Linkedin
+  Globe, Phone, Mail, Facebook, Instagram
 } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,20 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+// Icono de X (Twitter)
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+  </svg>
+);
+
+// Icono de TikTok
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+    <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.06-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.59-1.01-.01 2.62-.02 5.24-.02 7.86 0 2.45-1.06 4.96-3.05 6.42-2.15 1.63-5.2 1.95-7.66 1.05-2.61-.95-4.47-3.72-4.41-6.52.06-2.52 1.55-4.99 3.86-6.02 1.25-.56 2.64-.7 3.99-.48.01 1.45.01 2.91.01 4.36-1.07-.34-2.26-.27-3.23.36-.93.61-1.48 1.72-1.4 2.82.08 1.53 1.48 2.84 3 2.81 1.5-.02 2.81-1.32 2.81-2.81V0l-.01.02z"></path>
+  </svg>
+);
 
 export function DashboardView() {
   const { user, logout } = useAuth();
@@ -309,82 +323,68 @@ export function DashboardView() {
         </Tabs>
       </main>
 
-      <footer className="py-16 px-8 border-t bg-white">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+      <footer className="py-8 px-8 border-t bg-white">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-4 group">
-              <div className="w-16 h-16 bg-muted/20 p-2 rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500 overflow-hidden flex items-center justify-center">
+              <div className="w-12 h-12 bg-muted/20 p-1.5 rounded-xl grayscale group-hover:grayscale-0 transition-all duration-500 overflow-hidden flex items-center justify-center">
                 {pnpLogo && (
                   <Image 
                     src={pnpLogo.imageUrl} 
                     alt="PNP Footer" 
-                    width={50} 
-                    height={50} 
+                    width={36} 
+                    height={36} 
                     className="object-contain"
                     data-ai-hint={pnpLogo.imageHint}
                   />
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Sistema Oficial de Seguridad</span>
-                <span className="text-xs font-bold text-muted-foreground">República del Perú • PNP Paucartambo © {new Date().getFullYear()}</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sistema Oficial de Seguridad</span>
+                <span className="text-[10px] font-bold text-muted-foreground">PNP Paucartambo © {new Date().getFullYear()}</span>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Facebook className="h-5 w-5" />
+            <div className="flex gap-3">
+              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Facebook className="h-4 w-4" />
               </a>
-              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Instagram className="h-5 w-5" />
+              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <Instagram className="h-4 w-4" />
               </a>
-              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Twitter className="h-5 w-5" />
+              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <XIcon className="h-4 w-4" />
               </a>
-              <a href="#" className="p-3 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Linkedin className="h-5 w-5" />
+              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
+                <TikTokIcon className="h-4 w-4" />
               </a>
             </div>
           </div>
           
           <Separator className="opacity-20" />
           
-          <div className="flex flex-col items-center gap-6 text-center">
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2 text-primary font-bold tracking-tight">
-                <span className="text-xs uppercase tracking-[0.3em] opacity-40">Desarrollado con excelencia por</span>
-                <span className="text-lg font-black tracking-widest text-primary">CODEX CUSCO</span>
-              </div>
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex items-center justify-center gap-2 text-primary font-bold tracking-tight">
+              <span className="text-[9px] uppercase tracking-[0.2em] opacity-40">Desarrollado por</span>
+              <span className="text-sm font-black tracking-widest text-primary">CODEX CUSCO</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full max-w-3xl">
-              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
-                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                  <Globe className="h-5 w-5" />
-                </div>
+            <div className="flex flex-wrap justify-center gap-6 w-full max-w-2xl">
+              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
+                <Globe className="h-3.5 w-3.5 text-primary/70" />
                 <span className="text-[10px] font-black uppercase tracking-widest">codexcusco.com</span>
               </a>
               
-              <a href="tel:+51972156954" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
-                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                  <Phone className="h-5 w-5" />
-                </div>
+              <a href="tel:+51972156954" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
+                <Phone className="h-3.5 w-3.5 text-primary/70" />
                 <span className="text-[10px] font-black uppercase tracking-widest">972 156 954</span>
               </a>
               
-              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-primary/5 transition-all group">
-                <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                  <Mail className="h-5 w-5" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-wrap break-all px-2">CODEXCUSCO@GMAIL.COM</span>
+              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
+                <Mail className="h-3.5 w-3.5 text-primary/70" />
+                <span className="text-[10px] font-black uppercase tracking-widest">CODEXCUSCO@GMAIL.COM</span>
               </a>
             </div>
-          </div>
-
-          <div className="pt-4 text-center">
-             <p className="text-[9px] font-medium text-muted-foreground/50 uppercase tracking-[0.5em]">
-               Innovación Digital al Servicio de la Ciudadanía
-             </p>
           </div>
         </div>
       </footer>
