@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -5,9 +6,11 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -23,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useAuth } from '@/components/auth-context';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -40,11 +44,13 @@ const riskColors: Record<string, string> = {
 };
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
+  const { user } = useAuth();
   const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
   const [changingStatus, setChangingStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
+  const [passwordVerify, setPasswordVerify] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
   const { toast } = useToast();
 
-  // LIMPIADOR DE SEGURIDAD EXTREMO: Asegura que el body siempre sea interactuable tras cerrar cualquier componente de Radix
   useEffect(() => {
     const cleanup = () => {
       document.body.style.pointerEvents = 'auto';
@@ -59,24 +65,44 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
     setChangingStatus({ id: caseId, caseNumber, status: newStatus });
+    setPasswordVerify('');
+    setPasswordError(false);
+  };
+
+  const handleCancelStatusChange = () => {
+    setChangingStatus(null);
+    setPasswordVerify('');
+    setPasswordError(false);
   };
 
   const confirmStatusChange = () => {
-    if (changingStatus) {
-      updateCaseStatus(changingStatus.id, changingStatus.status);
-      const caseNum = changingStatus.caseNumber;
-      const targetStatus = changingStatus.status;
-      
-      setChangingStatus(null);
-      
-      requestAnimationFrame(() => {
-        onUpdate();
-        toast({ 
-          title: "Estado Actualizado", 
-          description: `El expediente ${caseNum} ahora está como "${targetStatus}".` 
-        });
+    if (!changingStatus) return;
+
+    // Validación de seguridad: en el demo la contraseña coincide con el nombre de usuario
+    if (passwordVerify !== user?.username) {
+      setPasswordError(true);
+      toast({
+        variant: "destructive",
+        title: "Error de Seguridad",
+        description: "La contraseña ingresada es incorrecta. Acción bloqueada."
       });
+      return;
     }
+
+    updateCaseStatus(changingStatus.id, changingStatus.status);
+    const caseNum = changingStatus.caseNumber;
+    const targetStatus = changingStatus.status;
+    
+    setChangingStatus(null);
+    setPasswordVerify('');
+    
+    requestAnimationFrame(() => {
+      onUpdate();
+      toast({ 
+        title: "Cambio Autorizado", 
+        description: `El expediente ${caseNum} ha sido actualizado a "${targetStatus}" por ${user?.username}.` 
+      });
+    });
   };
 
   if (cases.length === 0) {
@@ -226,24 +252,55 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </DialogContent>
       </Dialog>
 
-      {/* ALERTA DE CONFIRMACIÓN PARA CAMBIO DE ESTADO */}
-      <AlertDialog open={!!changingStatus} onOpenChange={(open) => !open && setChangingStatus(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Confirmar cambio de estado?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Usted está por cambiar el estado del expediente <strong>{changingStatus?.caseNumber}</strong> a <strong>"{changingStatus?.status}"</strong>. 
-              Esta acción quedará registrada permanentemente en el historial de auditoría.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusChange} className="bg-primary hover:bg-primary/90">
-              Sí, Actualizar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* DIÁLOGO DE SEGURIDAD PARA CAMBIO DE ESTADO */}
+      <Dialog open={!!changingStatus} onOpenChange={(open) => !open && handleCancelStatusChange()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" /> Autorización de Seguridad
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs font-bold text-amber-800 uppercase flex items-center gap-2">
+                  <AlertTriangle className="h-3 w-3" /> ADVERTENCIA DE IRREVOCABILIDAD
+                </p>
+                <p className="text-[11px] text-amber-700 leading-tight mt-1">
+                  Usted está modificando el estado oficial del expediente <strong>{changingStatus?.caseNumber}</strong> a <strong>"{changingStatus?.status}"</strong>. 
+                  Esta acción quedará registrada permanentemente en el historial de auditoría y no puede ser deshecha administrativamente.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="pass-verify" className="text-xs font-bold uppercase text-muted-foreground">Confirme su Contraseña</Label>
+              <Input 
+                id="pass-verify"
+                type="password" 
+                placeholder="Ingrese su contraseña actual"
+                className={passwordError ? "border-destructive animate-shake" : ""}
+                value={passwordVerify}
+                onChange={(e) => setPasswordVerify(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmStatusChange()}
+              />
+              {passwordError && (
+                <p className="text-[10px] font-bold text-destructive uppercase tracking-widest">Contraseña incorrecta</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={handleCancelStatusChange} className="text-xs font-bold uppercase">Cancelar</Button>
+            <Button 
+              onClick={confirmStatusChange} 
+              className="bg-primary hover:bg-primary/90 text-xs font-bold uppercase px-6"
+            >
+              AUTORIZAR CAMBIO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
