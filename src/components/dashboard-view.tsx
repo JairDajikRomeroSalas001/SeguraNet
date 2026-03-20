@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useCallback } from 'react';
@@ -89,46 +88,51 @@ export function DashboardView() {
       return;
     }
 
+    // Definición de columnas ordenadas para estética y lógica
     const headers = [
-      "Nro. Expediente",
-      "Fecha Entrada",
-      "Hora Entrada",
-      "Victima",
-      "DNI Victima",
-      "Agresor",
-      "DNI Agresor",
-      "Tipo Violencia",
-      "Nivel Riesgo",
-      "Oficial Asignado",
-      "Estado",
-      "Lugar Incidente",
-      "Fecha Incidente"
+      "EXPEDIENTE",
+      "FECHA REGISTRO",
+      "HORA REGISTRO",
+      "DNI VICTIMA",
+      "NOMBRE VICTIMA",
+      "CELULAR VICTIMA",
+      "DNI AGRESOR",
+      "NOMBRE AGRESOR",
+      "TIPO VIOLENCIA",
+      "NIVEL RIESGO",
+      "OFICIAL ASIGNADO",
+      "ESTADO",
+      "FECHA INCIDENTE",
+      "LUGAR INCIDENTE",
+      "DESCRIPCION"
     ];
 
     const csvRows = filteredCases.map(c => [
       `"${c.caseNumber}"`,
       `"${c.entryDate}"`,
       `"${c.entryTime}"`,
-      `"${c.victim.name.replace(/"/g, '""')}"`,
       `"${c.victim.dni}"`,
-      `"${c.aggressor.name.replace(/"/g, '""')}"`,
+      `"${c.victim.name.replace(/"/g, '""')}"`,
+      `"${c.victim.phone}"`,
       `"${c.aggressor.dni}"`,
+      `"${c.aggressor.name.replace(/"/g, '""')}"`,
       `"${c.violenceType}"`,
       `"${c.riskLevel}"`,
       `"${c.assignedOfficer.replace(/"/g, '""')}"`,
       `"${c.status}"`,
+      `"${c.incidentDate}"`,
       `"${c.incidentLocation.replace(/"/g, '""')}"`,
-      `"${c.incidentDate}"`
+      `"${c.incidentDescription.replace(/"/g, '""').replace(/\n/g, ' ')}"`
     ].join(','));
 
-    // UTF-8 BOM para que Excel reconozca los caracteres especiales
-    const csvContent = "\uFEFF" + [headers.join(','), ...csvRows].join('\n');
+    // UTF-8 BOM + sep=, para compatibilidad total con Excel en español
+    const csvContent = "sep=,\n\uFEFF" + [headers.join(','), ...csvRows].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `reporte_denuncias_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `Reporte_Paucartambo_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -136,7 +140,7 @@ export function DashboardView() {
 
     toast({
       title: "Exportación Excel Exitosa",
-      description: "El archivo CSV optimizado para Excel ha sido descargado."
+      description: "El reporte se ha generado con formato optimizado para Excel."
     });
   };
 
@@ -153,14 +157,18 @@ export function DashboardView() {
     const doc = new jsPDF('landscape');
     const timestamp = new Date().toLocaleString();
 
-    // Encabezado
+    // Encabezado Institucional
     doc.setFontSize(16);
-    doc.setTextColor(40);
+    doc.setTextColor(54, 71, 125); // Primary color
     doc.text('COMISARIA DE PAUCARTAMBO - CUSCO', 14, 20);
+    
     doc.setFontSize(12);
-    doc.text('REPORTE DE DENUNCIAS REGISTRADAS', 14, 28);
-    doc.setFontSize(10);
-    doc.text(`Generado por: ${user?.username} | Fecha: ${timestamp}`, 14, 35);
+    doc.setTextColor(100);
+    doc.text('REPORTE OFICIAL DE DENUNCIAS REGISTRADAS', 14, 28);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text(`Generado por: ${user?.username} | Fecha y Hora de Generación: ${timestamp}`, 14, 35);
 
     const tableHeaders = [
       ["EXPEDIENTE", "FECHA", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]
@@ -182,16 +190,27 @@ export function DashboardView() {
       body: tableData,
       startY: 40,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillStyle: 'F', fillColor: [54, 71, 125], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
+      styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+      headStyles: { 
+        fillColor: [54, 71, 125], 
+        textColor: 255, 
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 30 },
+        4: { cellWidth: 40 },
+        5: { halign: 'center' },
+        7: { halign: 'center' }
+      }
     });
 
-    doc.save(`reporte_paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Reporte_Oficial_Paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
 
     toast({
       title: "Exportación PDF Exitosa",
-      description: "El reporte oficial en PDF ha sido generado."
+      description: "El reporte oficial ha sido descargado correctamente."
     });
   };
 
@@ -240,12 +259,12 @@ export function DashboardView() {
                     <Download className="h-4 w-4 mr-2" /> EXPORTAR DATOS
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (CSV)
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2 py-2">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (Formateado)
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2">
-                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF
+                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2 py-2">
+                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF (Reporte)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
