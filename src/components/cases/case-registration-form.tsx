@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@//components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
@@ -66,10 +66,38 @@ const violenceOptions = [
 ];
 
 const riskOptions = [
-  { value: "Leve", label: "Riesgo Leve", desc: "Riesgo bajo, sin indicadores de peligro inmediato", color: "border-green-200 bg-green-50 text-green-700", accent: "bg-green-600" },
-  { value: "Moderado", label: "Moderado", desc: "Riesgo medio, requiere seguimiento regular", color: "border-yellow-200 bg-yellow-50 text-yellow-700", accent: "bg-yellow-600" },
-  { value: "Severo", label: "Severo", desc: "Riesgo alto, requiere intervención prioritaria", color: "border-orange-200 bg-orange-50 text-orange-700", accent: "bg-orange-600" },
-  { value: "Muy Severo", label: "Muy Severo", desc: "Riesgo extremo, peligro inminente para la vida", color: "border-red-200 bg-red-50 text-red-700", accent: "bg-red-600" },
+  { 
+    value: "Leve", 
+    label: "Riesgo Leve", 
+    desc: "Riesgo bajo, sin indicadores de peligro inmediato para la integridad física o la vida.", 
+    color: "border-green-200 bg-green-50 text-green-700", 
+    accent: "bg-green-600",
+    hover: "hover:border-green-400 hover:bg-green-100"
+  },
+  { 
+    value: "Moderado", 
+    label: "Moderado", 
+    desc: "Riesgo medio, existen actos de violencia pero no riesgo inminente. Requiere seguimiento regular.", 
+    color: "border-yellow-200 bg-yellow-50 text-yellow-700", 
+    accent: "bg-yellow-600",
+    hover: "hover:border-yellow-400 hover:bg-yellow-100"
+  },
+  { 
+    value: "Severo", 
+    label: "Severo", 
+    desc: "Riesgo alto, existe probabilidad de nuevas agresiones graves. Requiere intervención prioritaria.", 
+    color: "border-orange-200 bg-orange-50 text-orange-700", 
+    accent: "bg-orange-600",
+    hover: "hover:border-orange-400 hover:bg-orange-100"
+  },
+  { 
+    value: "Muy Severo", 
+    label: "Muy Severo", 
+    desc: "Riesgo extremo, peligro inminente para la vida de la víctima. Requiere medidas de protección urgentes.", 
+    color: "border-red-200 bg-red-50 text-red-700", 
+    accent: "bg-red-600",
+    hover: "hover:border-red-400 hover:bg-red-100"
+  },
 ] as const;
 
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
@@ -352,37 +380,56 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                       >
                         {riskOptions.map((opt) => (
-                          <FormItem key={opt.value}>
+                          <FormItem key={opt.value} className="space-y-0">
                             <FormControl>
                               <RadioGroupItem value={opt.value} className="sr-only" />
                             </FormControl>
                             <FormLabel
                               className={cn(
-                                "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 h-full text-center overflow-hidden",
+                                "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 h-full text-center overflow-hidden",
+                                opt.hover,
                                 field.value === opt.value 
-                                  ? cn("border-foreground ring-4 ring-offset-2 ring-primary/20 scale-[1.02]", opt.color)
-                                  : "border-muted bg-white hover:bg-muted/50 grayscale-[0.5]"
+                                  ? cn("border-foreground ring-4 ring-offset-2 ring-primary/20 scale-[1.05] shadow-lg", opt.color)
+                                  : "border-muted bg-white grayscale-[0.3]"
                               )}
                             >
-                              {field.value === opt.value && <div className={cn("absolute top-0 left-0 w-full h-1.5", opt.accent)} />}
-                              <span className="font-extrabold text-sm uppercase mb-1">{opt.label}</span>
-                              <div className={cn("w-3 h-3 rounded-full mb-2 shadow-sm", opt.accent)} />
+                              {field.value === opt.value && (
+                                <div className={cn("absolute top-0 left-0 w-full h-2 animate-in slide-in-from-left duration-500", opt.accent)} />
+                              )}
+                              <span className={cn(
+                                "font-extrabold text-xs uppercase mb-2 tracking-widest",
+                                field.value === opt.value ? "opacity-100" : "opacity-60"
+                              )}>
+                                {opt.label}
+                              </span>
+                              <div className={cn(
+                                "w-4 h-4 rounded-full transition-transform duration-300 shadow-inner border-2 border-white",
+                                opt.accent,
+                                field.value === opt.value ? "scale-125 rotate-12" : "scale-100"
+                              )} />
                             </FormLabel>
                           </FormItem>
                         ))}
                       </RadioGroup>
                     </FormControl>
                     
-                    {/* Mensaje de riesgo dinámico */}
-                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                    {/* Mensaje de riesgo dinámico con animación */}
+                    <div className="mt-4">
                       {riskOptions.find(o => o.value === selectedRisk) && (
-                        <Alert className={cn("border-none shadow-sm", riskOptions.find(o => o.value === selectedRisk)?.color)}>
-                          <Shield className="h-4 w-4" />
-                          <AlertTitle className="text-xs font-bold uppercase">Estado: {selectedRisk}</AlertTitle>
-                          <AlertDescription className="text-sm">
-                            {riskOptions.find(o => o.value === selectedRisk)?.desc}
-                          </AlertDescription>
-                        </Alert>
+                        <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                          <Alert className={cn(
+                            "border-2 shadow-md transition-colors duration-500", 
+                            riskOptions.find(o => o.value === selectedRisk)?.color
+                          )}>
+                            <Shield className="h-5 w-5" />
+                            <AlertTitle className="text-sm font-bold uppercase tracking-wider mb-1">
+                              Estado de Alerta: {selectedRisk}
+                            </AlertTitle>
+                            <AlertDescription className="text-sm font-medium leading-relaxed">
+                              {riskOptions.find(o => o.value === selectedRisk)?.desc}
+                            </AlertDescription>
+                          </Alert>
+                        </div>
                       )}
                     </div>
                     <FormMessage />
@@ -424,7 +471,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
                     <h4 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">CLASIFICACIÓN</h4>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary" className="text-[10px]">{form.getValues().violenceType}</Badge>
                       <Badge className={cn("text-[10px]", riskOptions.find(o => o.value === form.getValues().riskLevel)?.color)}>{form.getValues().riskLevel}</Badge>
                     </div>
