@@ -302,7 +302,15 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     if (step === 4) fieldsToValidate = ['incidentDescription', 'incidentDate', 'incidentTime', 'incidentLocation'];
 
     const isValid = await form.trigger(fieldsToValidate);
-    if (isValid) setStep(step + 1);
+    if (isValid) {
+      setStep(step + 1);
+    } else {
+      toast({ 
+        variant: "destructive", 
+        title: "Campos incompletos", 
+        description: "Por favor complete todos los campos obligatorios antes de continuar." 
+      });
+    }
   };
 
   const onSubmit = (values: FormData) => {
