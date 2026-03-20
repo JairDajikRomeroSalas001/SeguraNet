@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -6,21 +5,11 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
-} from '@/components/ui/alert-dialog';
 import { updateCaseStatus } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -43,13 +32,21 @@ const riskColors: Record<string, string> = {
   'Muy Severo': 'bg-red-100 text-red-700 border-red-200',
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
   const { user } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
   const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
   const [changingStatus, setChangingStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
   const [passwordVerify, setPasswordVerify] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const { toast } = useToast();
+
+  // Reset page when cases filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [cases.length]);
 
   useEffect(() => {
     const cleanup = () => {
@@ -62,6 +59,10 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       return () => clearTimeout(timer);
     }
   }, [viewingCase, changingStatus]);
+
+  const totalPages = Math.ceil(cases.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedCases = cases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
     setChangingStatus({ id: caseId, caseNumber, status: newStatus });
@@ -78,21 +79,18 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const confirmStatusChange = () => {
     if (!changingStatus) return;
 
-    // Validación de seguridad: en el demo la contraseña coincide con el nombre de usuario
+    // Validación de seguridad demo: coincide con el nombre de usuario
     if (passwordVerify !== user?.username) {
       setPasswordError(true);
       toast({
         variant: "destructive",
         title: "Error de Seguridad",
-        description: "La contraseña ingresada es incorrecta. Acción bloqueada."
+        description: "La contraseña ingresada es incorrecta."
       });
       return;
     }
 
     updateCaseStatus(changingStatus.id, changingStatus.status);
-    const caseNum = changingStatus.caseNumber;
-    const targetStatus = changingStatus.status;
-    
     setChangingStatus(null);
     setPasswordVerify('');
     
@@ -100,7 +98,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       onUpdate();
       toast({ 
         title: "Cambio Autorizado", 
-        description: `El expediente ${caseNum} ha sido actualizado a "${targetStatus}" por ${user?.username}.` 
+        description: "El estado ha sido actualizado correctamente." 
       });
     });
   };
@@ -109,38 +107,38 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg border border-dashed">
         <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground">No se encontraron denuncias con los filtros aplicados.</p>
+        <p className="text-muted-foreground">No se encontraron denuncias registradas.</p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
-              <TableHead className="font-bold text-primary">Expediente</TableHead>
-              <TableHead className="font-bold text-primary">Víctima</TableHead>
-              <TableHead className="font-bold text-primary">Agresor</TableHead>
-              <TableHead className="font-bold text-primary">Tipo Violencia</TableHead>
-              <TableHead className="font-bold text-primary">Oficial</TableHead>
-              <TableHead className="font-bold text-primary">Riesgo</TableHead>
-              <TableHead className="font-bold text-primary">Estado</TableHead>
-              <TableHead className="font-bold text-primary">Actualización</TableHead>
-              <TableHead className="text-right font-bold text-primary">Acciones</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Expediente</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Víctima</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Agresor</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Tipo Violencia</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Oficial</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Riesgo</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Estado</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase tracking-wider">Actualización</TableHead>
+              <TableHead className="text-right font-bold text-primary text-[11px] uppercase tracking-wider">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {cases.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-mono text-xs font-bold">{c.caseNumber}</TableCell>
-                <TableCell className="text-xs">{c.victim.name}</TableCell>
-                <TableCell className="text-xs">{c.aggressor.name}</TableCell>
-                <TableCell className="text-xs">{c.violenceType}</TableCell>
+            {paginatedCases.map((c) => (
+              <TableRow key={c.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-mono text-[11px] font-bold">{c.caseNumber}</TableCell>
+                <TableCell className="text-[11px]">{c.victim.name}</TableCell>
+                <TableCell className="text-[11px]">{c.aggressor.name}</TableCell>
+                <TableCell className="text-[11px]">{c.violenceType}</TableCell>
                 <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={`text-[10px] ${riskColors[c.riskLevel]}`}>
+                  <Badge variant="outline" className={`text-[9px] font-bold ${riskColors[c.riskLevel]}`}>
                     {c.riskLevel}
                   </Badge>
                 </TableCell>
@@ -149,29 +147,29 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     value={c.status} 
                     onValueChange={(val) => handleStatusChangeAttempt(c.id, c.caseNumber, val as CaseStatus)}
                   >
-                    <SelectTrigger className={`h-8 w-[140px] text-xs font-bold bg-muted/20 ${statusConfig[c.status].color}`}>
+                    <SelectTrigger className={`h-7 w-[130px] text-[10px] font-black bg-muted/20 ${statusConfig[c.status].color} rounded-lg`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Pendiente">Pendiente</SelectItem>
-                      <SelectItem value="En Proceso">En Proceso</SelectItem>
-                      <SelectItem value="Resuelto">Resuelto</SelectItem>
-                      <SelectItem value="Cerrado">Cerrado</SelectItem>
-                      <SelectItem value="Archivado">Archivado</SelectItem>
+                      <SelectItem value="Pendiente" className="text-xs font-bold">Pendiente</SelectItem>
+                      <SelectItem value="En Proceso" className="text-xs font-bold">En Proceso</SelectItem>
+                      <SelectItem value="Resuelto" className="text-xs font-bold">Resuelto</SelectItem>
+                      <SelectItem value="Cerrado" className="text-xs font-bold">Cerrado</SelectItem>
+                      <SelectItem value="Archivado" className="text-xs font-bold">Archivado</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
                 <TableCell className="text-[10px] text-muted-foreground whitespace-nowrap">
                   <div className="flex flex-col">
-                    <span>{format(new Date(c.updatedAt), 'dd/MM/yyyy')}</span>
-                    <span className="font-mono">{format(new Date(c.updatedAt), 'HH:mm:ss')}</span>
+                    <span>{format(new Date(c.updatedAt), 'dd/MM/yy')}</span>
+                    <span className="font-mono text-[9px]">{format(new Date(c.updatedAt), 'HH:mm')}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-8 gap-1.5 text-xs font-bold border-primary/20 text-primary hover:bg-primary hover:text-white"
+                    className="h-7 gap-1.5 text-[10px] font-black border-primary/20 text-primary hover:bg-primary hover:text-white rounded-lg px-3"
                     onClick={() => setViewingCase(c)}
                   >
                     <Eye className="h-3 w-3" /> VER EXPEDIENTE
@@ -183,124 +181,165 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </Table>
       </div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4 bg-white rounded-xl border border-primary/10 shadow-sm">
+          <p className="text-[11px] text-muted-foreground font-medium">
+            Mostrando <span className="font-bold text-primary">{startIndex + 1}</span> a <span className="font-bold text-primary">{Math.min(startIndex + ITEMS_PER_PAGE, cases.length)}</span> de <span className="font-bold text-primary">{cases.length}</span> resultados
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 rounded-lg border-primary/10 hover:bg-primary/5"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1 mx-2">
+              {[...Array(totalPages)].map((_, i) => (
+                <Button
+                  key={i}
+                  variant={currentPage === i + 1 ? "default" : "ghost"}
+                  size="sm"
+                  className={`h-8 w-8 p-0 rounded-lg text-[11px] font-bold ${currentPage === i + 1 ? 'shadow-md shadow-primary/20' : ''}`}
+                  onClick={() => setCurrentPage(i + 1)}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 rounded-lg border-primary/10 hover:bg-primary/5"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* DIÁLOGO DE DETALLE COMPLETO */}
       <Dialog open={!!viewingCase} onOpenChange={(open) => !open && setViewingCase(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Expediente: {viewingCase?.caseNumber}
+            <DialogTitle className="text-primary flex items-center gap-2 font-black text-xl">
+              <FileText className="h-6 w-6" /> EXPEDIENTE: {viewingCase?.caseNumber}
             </DialogTitle>
-            <DialogDescription>Información oficial registrada en la base de datos de la Comisaría.</DialogDescription>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Registro Oficial • Comisaría de Paucartambo</DialogDescription>
           </DialogHeader>
 
           {viewingCase && (
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3 p-4 bg-muted/20 rounded-lg border">
-                  <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><User className="h-4 w-4" /> Datos Víctima</h4>
-                  <p className="text-sm"><strong>Nombre:</strong> {viewingCase.victim.name}</p>
-                  <p className="text-sm"><strong>DNI:</strong> {viewingCase.victim.dni}</p>
-                  <p className="text-sm"><strong>Celular:</strong> {viewingCase.victim.phone}</p>
-                  <p className="text-sm"><strong>Dirección:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
+                <div className="space-y-3 p-5 bg-muted/20 rounded-2xl border shadow-sm">
+                  <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em] border-b pb-2"><User className="h-4 w-4" /> Datos de la Víctima</h4>
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.victim.name}</p>
+                    <p className="text-xs"><strong>DNI:</strong> {viewingCase.victim.dni}</p>
+                    <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.victim.phone}</p>
+                    <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
+                  </div>
                 </div>
-                <div className="space-y-3 p-4 bg-destructive/5 rounded-lg border">
-                  <h4 className="text-xs font-bold text-destructive flex items-center gap-2 uppercase tracking-widest"><User className="h-4 w-4" /> Datos Agresor</h4>
-                  <p className="text-sm"><strong>Nombre:</strong> {viewingCase.aggressor.name}</p>
-                  <p className="text-sm"><strong>DNI:</strong> {viewingCase.aggressor.dni}</p>
-                  <p className="text-sm"><strong>Celular:</strong> {viewingCase.aggressor.phone}</p>
-                  <p className="text-sm"><strong>Dirección:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
+                <div className="space-y-3 p-5 bg-destructive/5 rounded-2xl border border-destructive/10 shadow-sm">
+                  <h4 className="text-[10px] font-black text-destructive flex items-center gap-2 uppercase tracking-[0.2em] border-b border-destructive/10 pb-2"><User className="h-4 w-4" /> Datos del Agresor</h4>
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.aggressor.name}</p>
+                    <p className="text-xs"><strong>DNI:</strong> {viewingCase.aggressor.dni}</p>
+                    <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.aggressor.phone}</p>
+                    <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><UserCheck className="h-3 w-3" /> Oficial Responsable</h4>
-                  <p className="text-sm font-semibold uppercase">{viewingCase.assignedOfficer}</p>
+                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                  <UserCheck className="h-5 w-5 text-primary mb-2" />
+                  <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase tracking-widest">Oficial Responsable</h4>
+                  <p className="text-xs font-black uppercase text-primary">{viewingCase.assignedOfficer}</p>
                 </div>
-                <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> Clasificación</h4>
-                  <p className="text-sm font-semibold">{viewingCase.violenceType}</p>
+                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mb-2" />
+                  <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase tracking-widest">Tipo de Violencia</h4>
+                  <p className="text-xs font-black text-primary">{viewingCase.violenceType}</p>
                 </div>
-                <div className="p-4 bg-primary/5 rounded-lg border">
-                  <h4 className="text-[10px] font-bold text-primary mb-1 uppercase tracking-widest flex items-center gap-1.5"><History className="h-3 w-3" /> Última modificación</h4>
-                  <p className="text-xs font-mono">{format(new Date(viewingCase.updatedAt), "dd/MM/yyyy HH:mm:ss", { locale: es })}</p>
+                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                  <History className="h-5 w-5 text-slate-500 mb-2" />
+                  <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase tracking-widest">Última Actualización</h4>
+                  <p className="text-xs font-mono font-bold text-primary">{format(new Date(viewingCase.updatedAt), "dd/MM/yyyy HH:mm:ss")}</p>
                 </div>
               </div>
 
-              <Separator />
-
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                  <FileText className="h-4 w-4" /> Hechos Reportados
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em]">
+                  <FileText className="h-4 w-4" /> Descripción de los Hechos
                 </h4>
-                <div className="bg-muted/10 p-4 rounded-xl border">
-                  <p className="text-sm text-muted-foreground italic leading-relaxed">
-                    {viewingCase.incidentDescription}
-                  </p>
+                <div className="bg-muted/10 p-5 rounded-2xl border italic text-sm leading-relaxed text-slate-700">
+                  {viewingCase.incidentDescription}
                 </div>
               </div>
-              
-              {viewingCase.additionalObservations && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Observaciones</h4>
-                  <p className="text-xs p-3 border rounded bg-muted/5">{viewingCase.additionalObservations}</p>
-                </div>
-              )}
             </div>
           )}
-          <DialogFooter><Button variant="ghost" onClick={() => setViewingCase(null)}>Cerrar</Button></DialogFooter>
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" onClick={() => setViewingCase(null)} className="font-bold text-xs uppercase">Cerrar Expediente</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* DIÁLOGO DE SEGURIDAD PARA CAMBIO DE ESTADO */}
       <Dialog open={!!changingStatus} onOpenChange={(open) => !open && handleCancelStatusChange()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" /> Autorización de Seguridad
-            </DialogTitle>
-            <DialogDescription className="space-y-3 pt-2">
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-xs font-bold text-amber-800 uppercase flex items-center gap-2">
-                  <AlertTriangle className="h-3 w-3" /> ADVERTENCIA DE IRREVOCABILIDAD
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <ShieldCheck className="h-6 w-6 text-destructive" />
+            </div>
+            <DialogTitle className="text-xl font-black text-destructive uppercase tracking-tight">Autorización Requerida</DialogTitle>
+            <DialogDescription className="space-y-4 pt-2">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left">
+                <p className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-3 w-3" /> Advertencia Administrativa
                 </p>
-                <p className="text-[11px] text-amber-700 leading-tight mt-1">
-                  Usted está modificando el estado oficial del expediente <strong>{changingStatus?.caseNumber}</strong> a <strong>"{changingStatus?.status}"</strong>. 
-                  Esta acción quedará registrada permanentemente en el historial de auditoría y no puede ser deshecha administrativamente.
+                <p className="text-[11px] text-amber-700 leading-tight font-medium">
+                  Va a modificar el estado del expediente <strong className="text-amber-900">{changingStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{changingStatus?.status}"</strong>. 
+                  Este acto es <span className="underline decoration-2 underline-offset-2">IRREVOCABLE</span> y quedará registrado en su historial oficial.
                 </p>
               </div>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="pass-verify" className="text-xs font-bold uppercase text-muted-foreground">Confirme su Contraseña</Label>
+              <Label htmlFor="pass-verify" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Confirme su Contraseña Oficial</Label>
               <Input 
                 id="pass-verify"
                 type="password" 
-                placeholder="Ingrese su contraseña actual"
-                className={passwordError ? "border-destructive animate-shake" : ""}
+                placeholder="Ingrese su contraseña"
+                className={`h-11 rounded-xl text-center font-bold ${passwordError ? "border-destructive ring-destructive/20" : "border-muted"}`}
                 value={passwordVerify}
                 onChange={(e) => setPasswordVerify(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && confirmStatusChange()}
               />
               {passwordError && (
-                <p className="text-[10px] font-bold text-destructive uppercase tracking-widest">Contraseña incorrecta</p>
+                <p className="text-[10px] font-bold text-destructive text-center uppercase tracking-widest">Contraseña incorrecta</p>
               )}
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={handleCancelStatusChange} className="text-xs font-bold uppercase">Cancelar</Button>
+          <DialogFooter className="flex-col sm:flex-col gap-2">
             <Button 
               onClick={confirmStatusChange} 
-              className="bg-primary hover:bg-primary/90 text-xs font-bold uppercase px-6"
+              className="w-full bg-primary hover:bg-primary/90 h-11 text-xs font-black uppercase tracking-[0.1em] rounded-xl shadow-lg shadow-primary/20"
             >
-              AUTORIZAR CAMBIO
+              VALIDAR Y ACTUALIZAR ESTADO
             </Button>
+            <Button variant="ghost" onClick={handleCancelStatusChange} className="w-full text-[10px] font-bold uppercase text-muted-foreground">Cancelar operación</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

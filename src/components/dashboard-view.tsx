@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -33,14 +32,12 @@ import 'jspdf-autotable';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-// Icono de X (Twitter)
 const XIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
   </svg>
 );
 
-// Icono de TikTok
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
     <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.06-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.59-1.01-.01 2.62-.02 5.24-.02 7.86 0 2.45-1.06 4.96-3.05 6.42-2.15 1.63-5.2 1.95-7.66 1.05-2.61-.95-4.47-3.72-4.41-6.52.06-2.52 1.55-4.99 3.86-6.02 1.25-.56 2.64-.7 3.99-.48.01 1.45.01 2.91.01 4.36-1.07-.34-2.26-.27-3.23.36-.93.61-1.48 1.72-1.4 2.82.08 1.53 1.48 2.84 3 2.81 1.5-.02 2.81-1.32 2.81-2.81V0l-.01.02z"></path>
@@ -124,7 +121,7 @@ export function DashboardView() {
       return;
     }
 
-    const headers = ["EXPEDIENTE", "OFICIAL ASIGNADO", "VÍCTIMA", "AGRESOR", "TIPO VIOLENCIA", "RIESGO", "ESTADO", "FECHA REGISTRO", "LUGAR INCIDENTE"];
+    const headers = ["EXPEDIENTE", "OFICIAL", "VICTIMA", "AGRESOR", "TIPO_VIOLENCIA", "RIESGO", "ESTADO", "FECHA"];
     const rows = filteredCases.map(c => [
       `"${c.caseNumber}"`,
       `"${c.assignedOfficer}"`,
@@ -133,8 +130,7 @@ export function DashboardView() {
       `"${c.violenceType}"`,
       `"${c.riskLevel}"`,
       `"${c.status}"`,
-      `"${c.entryDate} ${c.entryTime}"`,
-      `"${c.incidentLocation}"`
+      `"${c.entryDate}"`
     ].join(','));
 
     const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + rows.join('\n');
@@ -142,12 +138,10 @@ export function DashboardView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Reporte_Paucartambo_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `REPORTE_OFICIAL_${format(new Date(), 'yyyyMMdd')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast({ title: "Excel Exportado", description: "El reporte se descargó correctamente." });
   };
 
   const handleExportPDF = () => {
@@ -160,12 +154,11 @@ export function DashboardView() {
     doc.setFontSize(18);
     doc.setTextColor(54, 71, 125); 
     doc.text('COMISARIA PNP PAUCARTAMBO - CUSCO', 14, 20);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text('REPORTE OFICIAL DE DENUNCIAS REGISTRADAS', 14, 28);
-    doc.text(`Generado por: ${user?.username} - ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 14, 34);
+    doc.text(`REPORTE GENERADO: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | OFICIAL: ${user?.username}`, 14, 28);
     
-    const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "TIPO VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]];
+    const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]];
     const tableData = filteredCases.map(c => [
       c.caseNumber,
       c.victim.name,
@@ -179,211 +172,158 @@ export function DashboardView() {
     (doc as any).autoTable({
       head: tableHeaders,
       body: tableData,
-      startY: 40,
+      startY: 34,
       theme: 'grid',
-      headStyles: { fillColor: [54, 71, 125], fontStyle: 'bold' },
-      styles: { fontSize: 8, cellPadding: 2 }
+      headStyles: { fillColor: [54, 71, 125], fontStyle: 'bold', fontSize: 7 },
+      styles: { fontSize: 7, cellPadding: 2 }
     });
 
-    doc.save(`Reporte_Oficial_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast({ title: "PDF Generado", description: "Reporte listo para impresión oficial." });
+    doc.save(`REPORTE_PDF_${format(new Date(), 'yyyyMMdd')}.pdf`);
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
-      <header className="bg-primary text-primary-foreground py-4 px-8 flex justify-between items-center shadow-[0_4px_20px_rgba(54,71,125,0.2)] sticky top-0 z-50 backdrop-blur-md bg-primary/95">
-        <div className="flex items-center gap-4 group cursor-default">
-          <div className="bg-white p-1.5 rounded-xl transition-transform group-hover:scale-110 duration-300 w-12 h-12 flex items-center justify-center overflow-hidden">
+      <header className="bg-primary text-primary-foreground py-3 px-8 flex justify-between items-center shadow-lg sticky top-0 z-50 backdrop-blur-md bg-primary/95 h-16">
+        <div className="flex items-center gap-3">
+          <div className="bg-white p-1 rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden">
             {pnpLogo && (
               <Image 
                 src={pnpLogo.imageUrl} 
                 alt="PNP Logo" 
-                width={40} 
-                height={40} 
+                width={32} 
+                height={32} 
                 className="object-contain"
                 data-ai-hint={pnpLogo.imageHint}
               />
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-              Paucartambo Segura
-              <Badge variant="outline" className="text-[9px] border-white/20 text-white/80 font-bold tracking-[0.2em] px-2 py-0">OFICIAL</Badge>
-            </h1>
-            <div className="flex items-center gap-2 text-[10px] text-white/60 uppercase tracking-widest font-bold">
-              <Shield className="h-3 w-3" />
-              PNP Paucartambo • Ministerio del Interior
-            </div>
+            <h1 className="text-xl font-black tracking-tight leading-none">Paucartambo Segura</h1>
+            <p className="text-[9px] text-white/60 uppercase tracking-widest font-bold mt-1">PNP Paucartambo • Oficial</p>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-3 px-4 py-6 hover:bg-white/10 rounded-xl transition-all border border-white/5">
-                <div className="hidden lg:flex flex-col items-end text-right">
-                  <span className="text-sm font-bold tracking-tight">{user?.username}</span>
-                  <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Oficial Administrativo</span>
+              <Button variant="ghost" className="h-11 px-3 hover:bg-white/10 rounded-xl transition-all border border-white/5 gap-3">
+                <div className="hidden lg:flex flex-col items-end">
+                  <span className="text-xs font-black uppercase tracking-wider">{user?.username}</span>
+                  <span className="text-[9px] text-white/50 font-bold uppercase">Administrador</span>
                 </div>
-                <div className="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
-                  <UserIcon className="h-5 w-5 text-white" />
+                <div className="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                  <UserIcon className="h-4 w-4 text-white" />
                 </div>
-                <ChevronDown className="h-4 w-4 text-white/50" />
+                <ChevronDown className="h-3 w-3 text-white/50" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-2xl border-primary/10">
-              <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-3 py-2">
-                Mi Perfil Oficial
-              </DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-primary/10">
+              <DropdownMenuLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-3 py-2">Cuenta Oficial</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => setActiveTab('configuracion')}
-                className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-primary/5 focus:text-primary transition-colors"
-              >
-                <div className="p-1.5 bg-primary/10 rounded-md text-primary">
-                  <Settings className="h-4 w-4" />
-                </div>
-                <span className="font-bold text-xs uppercase tracking-wider">Configuración</span>
+              <DropdownMenuItem onClick={() => setActiveTab('configuracion')} className="cursor-pointer gap-3 py-2.5 rounded-lg focus:bg-primary/5 focus:text-primary">
+                <Settings className="h-4 w-4" /><span className="font-bold text-[11px] uppercase tracking-wider">Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={logout}
-                className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-destructive/10 focus:text-destructive transition-colors"
-              >
-                <div className="p-1.5 bg-destructive/10 rounded-md text-destructive">
-                  <LogOut className="h-4 w-4" />
-                </div>
-                <span className="font-bold text-xs uppercase tracking-wider">Cerrar Sesión</span>
+              <DropdownMenuItem onClick={logout} className="cursor-pointer gap-3 py-2.5 rounded-lg focus:bg-destructive/10 focus:text-destructive">
+                <LogOut className="h-4 w-4" /><span className="font-bold text-[11px] uppercase tracking-wider">Cerrar Sesión</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto py-10 px-6 max-w-7xl animate-in fade-in duration-700">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <TabsList className="bg-white border shadow-sm p-1.5 h-14 rounded-2xl w-full md:w-auto overflow-x-auto">
-              <TabsTrigger 
-                value="panel" 
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
-              >
-                <LayoutDashboard className="h-4 w-4" /> VISTA GENERAL
+      <main className="flex-1 container mx-auto py-6 px-6 max-w-7xl animate-in fade-in duration-700">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <TabsList className="bg-white border shadow-sm p-1 h-12 rounded-xl">
+              <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
+                <LayoutDashboard className="h-3.5 w-3.5" /> Vista General
               </TabsTrigger>
-              <TabsTrigger 
-                value="registro" 
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
-              >
-                <FilePlus className="h-4 w-4" /> REGISTRAR DENUNCIA
+              <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
+                <FilePlus className="h-3.5 w-3.5" /> Registrar Denuncia
               </TabsTrigger>
             </TabsList>
             
             {activeTab === 'panel' && (
-              <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="flex items-center gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-white font-bold h-12 px-6 border-primary/10 text-primary hover:bg-primary/5 transition-all shadow-sm rounded-2xl gap-2">
-                      <Download className="h-4 w-4" /> EXPORTAR
+                    <Button variant="outline" className="bg-white font-black h-10 px-4 border-primary/10 text-primary text-[10px] uppercase tracking-[0.1em] rounded-lg gap-2 shadow-sm">
+                      <Download className="h-3.5 w-3.5" /> Exportar Datos
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64 rounded-xl p-2 shadow-xl border-primary/10">
-                    <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-emerald-50 focus:text-emerald-700">
-                      <div className="p-1.5 bg-emerald-100 rounded-md"><FileSpreadsheet className="h-4 w-4" /></div>
-                      <span className="font-bold text-xs uppercase tracking-wider">Exportar a Excel</span>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-xl">
+                    <DropdownMenuItem onClick={handleExportCSV} className="gap-3 py-2.5 rounded-lg cursor-pointer focus:bg-emerald-50 focus:text-emerald-700">
+                      <FileSpreadsheet className="h-4 w-4" /><span className="font-bold text-[10px] uppercase">Formato Excel</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-rose-50 focus:text-rose-700">
-                      <div className="p-1.5 bg-rose-100 rounded-md"><FileText className="h-4 w-4" /></div>
-                      <span className="font-bold text-xs uppercase tracking-wider">Reporte PDF Oficial</span>
+                    <DropdownMenuItem onClick={handleExportPDF} className="gap-3 py-2.5 rounded-lg cursor-pointer focus:bg-rose-50 focus:text-rose-700">
+                      <FileText className="h-4 w-4" /><span className="font-bold text-[10px] uppercase">Formato PDF</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <div className="h-12 flex items-center px-6 bg-white border border-primary/10 rounded-2xl shadow-sm">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-3">TOTAL</span>
-                  <span className="text-xl font-black text-primary">{filteredCases.length}</span>
+                <div className="h-10 flex items-center px-4 bg-white border border-primary/10 rounded-lg shadow-sm">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mr-2">DENUNCIAS</span>
+                  <span className="text-lg font-black text-primary leading-none">{filteredCases.length}</span>
                 </div>
               </div>
             )}
           </div>
 
-          <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="space-y-6">
               <CaseSearch onSearch={handleSearch} />
               <CaseList cases={filteredCases} onUpdate={refreshCases} />
             </div>
           </TabsContent>
 
-          <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CaseRegistrationForm onCaseAdded={() => { refreshCases(); setActiveTab('panel'); }} />
           </TabsContent>
 
-          <TabsContent value="configuracion" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="configuracion" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SettingsView />
           </TabsContent>
         </Tabs>
       </main>
 
-      <footer className="py-8 px-8 border-t bg-white">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-4 group">
-              <div className="w-12 h-12 bg-muted/20 p-1.5 rounded-xl grayscale group-hover:grayscale-0 transition-all duration-500 overflow-hidden flex items-center justify-center">
-                {pnpLogo && (
-                  <Image 
-                    src={pnpLogo.imageUrl} 
-                    alt="PNP Footer" 
-                    width={36} 
-                    height={36} 
-                    className="object-contain"
-                    data-ai-hint={pnpLogo.imageHint}
-                  />
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sistema Oficial de Seguridad</span>
-                <span className="text-[10px] font-bold text-muted-foreground">PNP Paucartambo © {new Date().getFullYear()}</span>
-              </div>
+      <footer className="py-4 px-8 border-t bg-white">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-muted/20 p-1 rounded-lg flex items-center justify-center overflow-hidden">
+              {pnpLogo && (
+                <Image 
+                  src={pnpLogo.imageUrl} 
+                  alt="PNP Footer" 
+                  width={24} 
+                  height={24} 
+                  className="object-contain grayscale hover:grayscale-0 transition-all"
+                  data-ai-hint={pnpLogo.imageHint}
+                />
+              )}
             </div>
-
-            <div className="flex gap-3">
-              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <XIcon className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2.5 bg-muted/10 rounded-full hover:bg-primary hover:text-white transition-all shadow-sm">
-                <TikTokIcon className="h-4 w-4" />
-              </a>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-wider text-primary leading-tight">PNP Paucartambo</span>
+              <span className="text-[8px] font-bold text-muted-foreground uppercase leading-tight">© {new Date().getFullYear()} Cusco, Perú</span>
             </div>
           </div>
-          
-          <Separator className="opacity-20" />
-          
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-primary font-bold tracking-tight">
-              <span className="text-[9px] uppercase tracking-[0.2em] opacity-40">Desarrollado por</span>
-              <span className="text-sm font-black tracking-widest text-primary">CODEX CUSCO</span>
+
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center md:items-end">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-[8px] uppercase tracking-[0.1em] text-muted-foreground font-bold">Desarrollado por</span>
+                <span className="text-[10px] font-black tracking-widest text-primary uppercase">Codex Cusco</span>
+              </div>
+              <div className="flex gap-4 text-[9px] font-bold text-muted-foreground/80">
+                <a href="https://codexcusco.com" target="_blank" className="hover:text-primary transition-colors">codexcusco.com</a>
+                <a href="tel:+51972156954" className="hover:text-primary transition-colors">972 156 954</a>
+              </div>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-6 w-full max-w-2xl">
-              <a href="https://codexcusco.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
-                <Globe className="h-3.5 w-3.5 text-primary/70" />
-                <span className="text-[10px] font-black uppercase tracking-widest">codexcusco.com</span>
-              </a>
-              
-              <a href="tel:+51972156954" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
-                <Phone className="h-3.5 w-3.5 text-primary/70" />
-                <span className="text-[10px] font-black uppercase tracking-widest">972 156 954</span>
-              </a>
-              
-              <a href="mailto:CODEXCUSCO@GMAIL.COM" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all group">
-                <Mail className="h-3.5 w-3.5 text-primary/70" />
-                <span className="text-[10px] font-black uppercase tracking-widest">CODEXCUSCO@GMAIL.COM</span>
-              </a>
+            <div className="flex gap-2">
+              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Facebook className="h-3 w-3" /></a>
+              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Instagram className="h-3 w-3" /></a>
+              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><XIcon className="h-3 w-3" /></a>
+              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><TikTokIcon className="h-3 w-3" /></a>
             </div>
           </div>
         </div>
