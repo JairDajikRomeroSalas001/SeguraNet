@@ -26,8 +26,12 @@ import { cn } from '@/lib/utils';
 
 const personSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
-  dni: z.string().length(8, 'El DNI debe tener 8 dígitos'),
-  phone: z.string().min(9, 'Mínimo 9 dígitos').max(15),
+  dni: z.string()
+    .length(8, 'El DNI debe tener exactamente 8 dígitos')
+    .regex(/^\d+$/, 'El DNI solo debe contener números'),
+  phone: z.string()
+    .length(9, 'El celular debe tener exactamente 9 dígitos')
+    .regex(/^9\d{8}$/, 'Debe empezar con 9 y contener solo 9 números'),
   street: z.string().min(1, 'Calle requerida'),
   number: z.string().min(1, 'Número requerido'),
   district: z.string().min(1, 'Distrito requerido'),
@@ -147,9 +151,9 @@ const PersonFormFields = ({
         name={`${type}.dni`}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>DNI</FormLabel>
+            <FormLabel>DNI (8 dígitos)</FormLabel>
             <div className="flex gap-2">
-              <FormControl><Input placeholder="8 dígitos" maxLength={8} {...field} /></FormControl>
+              <FormControl><Input placeholder="8 dígitos numéricos" maxLength={8} {...field} /></FormControl>
               <Button 
                 type="button" 
                 variant="secondary" 
@@ -182,8 +186,8 @@ const PersonFormFields = ({
         name={`${type}.phone`}
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center gap-2"><Phone className="h-3 w-3" /> Celular</FormLabel>
-            <FormControl><Input placeholder="999888777" {...field} /></FormControl>
+            <FormLabel className="flex items-center gap-2"><Phone className="h-3 w-3" /> Celular (9 dígitos, empieza con 9)</FormLabel>
+            <FormControl><Input placeholder="999888777" maxLength={9} {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -273,8 +277,8 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
   const validateDni = async (type: 'victim' | 'aggressor') => {
     const dni = form.getValues(`${type}.dni`);
-    if (dni.length !== 8) {
-      toast({ variant: "destructive", title: "DNI inválido", description: "Debe tener 8 dígitos." });
+    if (dni.length !== 8 || !/^\d+$/.test(dni)) {
+      toast({ variant: "destructive", title: "DNI inválido", description: "Debe tener 8 dígitos numéricos." });
       return;
     }
 
@@ -308,8 +312,8 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     } else {
       toast({ 
         variant: "destructive", 
-        title: "Campos incompletos", 
-        description: "Por favor complete todos los campos obligatorios antes de continuar." 
+        title: "Datos inválidos o incompletos", 
+        description: "Por favor verifique que el DNI tenga 8 dígitos y el celular 9 dígitos (empezando con 9)." 
       });
     }
   };
