@@ -10,15 +10,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, MapPin, 
-  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle
+  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle, Shield
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const personSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
@@ -38,6 +40,7 @@ const caseSchema = z.object({
   victim: personSchema,
   aggressor: personSchema,
   violenceType: z.string().min(1, 'Tipo de violencia requerido'),
+  riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
   crimeType: z.string().min(1, 'Tipo de delito requerido'),
   location: z.string().min(1, 'Ubicación requerida'),
   description: z.string().min(10, 'Descripción más detallada requerida'),
@@ -60,9 +63,17 @@ const originOptions = [
 const violenceOptions = [
   { value: "Violencia física", label: "Violencia física (agresión corporal, golpes, lesiones)" },
   { value: "Violencia Psicológica", label: "Violencia Psicológica (amenazas, humillaciones, control)" },
-  { value: "Violencia sexual", label: "Violencia sexual (control de recursos, privación económica)" },
+  { value: "Violencia económica", label: "Violencia económica (control de recursos, privación económica)" },
+  { value: "Violencia sexual", label: "Violencia sexual (actos contra la libertad sexual)" },
   { value: "Violencia patrimonial", label: "Violencia patrimonial (destrucción de bienes, despojo)" },
   { value: "Violencia mixta", label: "Violencia mixta (combinación de varios tipos)" },
+];
+
+const riskOptions = [
+  { value: "Leve", label: "Riesgo Leve", desc: "Riesgo bajo, sin indicadores de peligro inmediato", color: "border-green-200 bg-green-50 text-green-700" },
+  { value: "Moderado", label: "Moderado", desc: "Riesgo medio, requiere seguimiento regular", color: "border-yellow-200 bg-yellow-50 text-yellow-700" },
+  { value: "Severo", label: "Severo", desc: "Riesgo alto, requiere intervención prioritaria", color: "border-orange-200 bg-orange-50 text-orange-700" },
+  { value: "Muy Severo", label: "Muy Severo", desc: "Riesgo extremo, peligro inminente para la vida", color: "border-red-200 bg-red-50 text-red-700" },
 ];
 
 export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
@@ -85,6 +96,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       violenceType: '',
+      riskLevel: 'Leve',
       crimeType: '',
       location: 'Paucartambo',
       description: '',
@@ -112,7 +124,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
         form.setValue(`${type}.name`, mockNames[dni]);
         toast({ title: "DNI Validado", description: `Se encontró a: ${mockNames[dni]}` });
       } else {
-        toast({ title: "No encontrado", description: "DNI no registrado. Complete manualmente." });
+        toast({ title: "No encontrado", description: "DNI no registrado en el simulador. Complete manualmente." });
       }
     }, 1000);
   };
@@ -121,7 +133,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
-    if (step === 3) fieldsToValidate = ['violenceType', 'crimeType', 'location', 'description', 'incidentDate'];
+    if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel', 'crimeType', 'location', 'description', 'incidentDate'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(step + 1);
@@ -131,7 +143,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     addCase({
       ...values,
       status: 'Pendiente',
-      tags: [values.crimeType, values.violenceType],
+      tags: [values.crimeType, values.violenceType, values.riskLevel],
       date: values.incidentDate
     });
     
@@ -290,7 +302,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   )} />
                   <FormField control={form.control} name="entryTime" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso (con segundos)</FormLabel>
+                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora de Ingreso (HH:MM:SS)</FormLabel>
                       <FormControl><Input type="time" step="1" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -315,7 +327,10 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
             {step === 3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-primary/5">Clasificación según Ley N°30364</Badge>
+                </div>
                 
                 <FormField control={form.control} name="violenceType" render={({ field }) => (
                   <FormItem>
@@ -334,7 +349,40 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   </FormItem>
                 )} />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="riskLevel" render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="flex items-center gap-2 font-bold"><Shield className="h-4 w-4 text-primary" /> NIVEL DE RIESGO</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+                      >
+                        {riskOptions.map((opt) => (
+                          <FormItem key={opt.value}>
+                            <FormControl>
+                              <RadioGroupItem value={opt.value} className="sr-only" />
+                            </FormControl>
+                            <FormLabel
+                              className={cn(
+                                "flex flex-col items-start gap-1 p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md",
+                                field.value === opt.value 
+                                  ? cn("border-primary ring-2 ring-primary/20", opt.color)
+                                  : "border-muted bg-white hover:border-muted-foreground/30"
+                              )}
+                            >
+                              <span className="font-bold text-sm uppercase">{opt.label}</span>
+                              <span className="text-[10px] leading-tight opacity-80">{opt.desc}</span>
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                   <FormField control={form.control} name="crimeType" render={({ field }) => (
                     <FormItem><FormLabel>Delito / Falta Específica</FormLabel><FormControl><Input placeholder="Ej: Agresión física grave" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
@@ -359,32 +407,38 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                 <div className="grid grid-cols-1 gap-4 text-sm">
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(1)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-2">DATOS DEL EXPEDIENTE</h4>
+                    <h4 className="text-xs font-bold text-primary mb-2 uppercase">DATOS DEL EXPEDIENTE</h4>
                     <p><strong>Número:</strong> {form.getValues().caseNumber}</p>
                     <p><strong>Origen:</strong> {form.getValues().origin}</p>
                     <p><strong>Ingreso:</strong> {form.getValues().entryDate} {form.getValues().entryTime}</p>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(2)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="text-[10px] font-bold text-primary">VÍCTIMA</h4>
-                        <p>{form.getValues().victim.name} (DNI: {form.getValues().victim.dni})</p>
-                        <p className="text-[10px] text-muted-foreground">{form.getValues().victim.street} #{form.getValues().victim.number}</p>
+                        <h4 className="text-[10px] font-bold text-primary uppercase">VÍCTIMA</h4>
+                        <p className="font-bold">{form.getValues().victim.name}</p>
+                        <p className="text-xs">DNI: {form.getValues().victim.dni} | Cel: {form.getValues().victim.phone}</p>
+                        <p className="text-[10px] text-muted-foreground">{form.getValues().victim.street} #{form.getValues().victim.number}, {form.getValues().victim.district}</p>
                       </div>
                       <div>
-                        <h4 className="text-[10px] font-bold text-destructive">AGRESOR</h4>
-                        <p>{form.getValues().aggressor.name} (DNI: {form.getValues().aggressor.dni})</p>
-                        <p className="text-[10px] text-muted-foreground">{form.getValues().aggressor.street} #{form.getValues().aggressor.number}</p>
+                        <h4 className="text-[10px] font-bold text-destructive uppercase">AGRESOR</h4>
+                        <p className="font-bold">{form.getValues().aggressor.name}</p>
+                        <p className="text-xs">DNI: {form.getValues().aggressor.dni} | Cel: {form.getValues().aggressor.phone}</p>
+                        <p className="text-[10px] text-muted-foreground">{form.getValues().aggressor.street} #{form.getValues().aggressor.number}, {form.getValues().aggressor.district}</p>
                       </div>
                     </div>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-lg border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
-                    <h4 className="text-xs font-bold text-primary mb-2">CLASIFICACIÓN</h4>
-                    <p><strong>Tipo Violencia:</strong> {form.getValues().violenceType}</p>
+                    <h4 className="text-xs font-bold text-primary mb-2 uppercase">CLASIFICACIÓN</h4>
+                    <div className="flex gap-2 mb-2">
+                      <Badge variant="secondary" className="text-[10px]">{form.getValues().violenceType}</Badge>
+                      <Badge className={cn("text-[10px]", riskOptions.find(o => o.value === form.getValues().riskLevel)?.color)}>{form.getValues().riskLevel}</Badge>
+                    </div>
                     <p><strong>Delito:</strong> {form.getValues().crimeType}</p>
-                    <p><strong>Fecha Incidente:</strong> {form.getValues().incidentDate}</p>
+                    <p><strong>Ubicación:</strong> {form.getValues().location}</p>
+                    <p className="line-clamp-2 italic text-muted-foreground text-xs mt-1">"{form.getValues().description}"</p>
                   </div>
                 </div>
               </div>

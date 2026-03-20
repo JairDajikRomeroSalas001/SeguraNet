@@ -6,9 +6,9 @@ let cases: PoliceCase[] = [
     caseNumber: 'EXP-2024-001',
     origin: 'Denuncia Directa',
     entryDate: '2024-05-15',
-    entryTime: '10:30',
+    entryTime: '10:30:00',
     victim: {
-      name: 'Juan Pérez',
+      name: 'JUAN PEREZ MENDOZA',
       dni: '12345678',
       phone: '987654321',
       street: 'Av. Sol',
@@ -17,7 +17,7 @@ let cases: PoliceCase[] = [
       reference: 'Frente al parque'
     },
     aggressor: {
-      name: 'Desconocido',
+      name: 'DESCONOCIDO',
       dni: '00000000',
       phone: 'N/A',
       street: 'N/A',
@@ -25,12 +25,14 @@ let cases: PoliceCase[] = [
       district: 'N/A',
       reference: 'N/A'
     },
-    crimeType: 'Robo Agravado',
+    violenceType: 'Violencia física',
+    riskLevel: 'Leve',
+    crimeType: 'Agresión física',
     location: 'Plaza de Armas, Paucartambo',
-    description: 'Robo a mano armada cerca de la Plaza de Armas.',
+    description: 'Incidente reportado cerca de la plaza central.',
     date: '2024-05-15',
     status: 'Pendiente',
-    tags: ['Robo', 'Arma blanca'],
+    tags: ['Física', 'Leve'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }

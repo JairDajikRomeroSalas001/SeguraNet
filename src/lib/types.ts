@@ -1,4 +1,5 @@
 export type CaseStatus = 'Pendiente' | 'En Proceso' | 'Resuelto' | 'Cerrado';
+export type RiskLevel = 'Leve' | 'Moderado' | 'Severo' | 'Muy Severo';
 
 export interface PersonData {
   name: string;
@@ -22,6 +23,7 @@ export interface PoliceCase {
   aggressor: PersonData;
   // Paso 3: Clasificación del Incidente
   violenceType: string;
+  riskLevel: RiskLevel;
   crimeType: string;
   location: string;
   description: string;
