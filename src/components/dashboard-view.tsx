@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useCallback } from 'react';
@@ -88,19 +89,18 @@ export function DashboardView() {
       return;
     }
 
-    // Definición de columnas ordenadas para estética y lógica
     const headers = [
       "EXPEDIENTE",
       "FECHA REGISTRO",
       "HORA REGISTRO",
-      "DNI VICTIMA",
+      "OFICIAL ASIGNADO",
       "NOMBRE VICTIMA",
+      "DNI VICTIMA",
       "CELULAR VICTIMA",
-      "DNI AGRESOR",
       "NOMBRE AGRESOR",
+      "DNI AGRESOR",
       "TIPO VIOLENCIA",
       "NIVEL RIESGO",
-      "OFICIAL ASIGNADO",
       "ESTADO",
       "FECHA INCIDENTE",
       "LUGAR INCIDENTE",
@@ -111,22 +111,23 @@ export function DashboardView() {
       `"${c.caseNumber}"`,
       `"${c.entryDate}"`,
       `"${c.entryTime}"`,
-      `"${c.victim.dni}"`,
+      `"${c.assignedOfficer.replace(/"/g, '""')}"`,
       `"${c.victim.name.replace(/"/g, '""')}"`,
+      `"${c.victim.dni}"`,
       `"${c.victim.phone}"`,
-      `"${c.aggressor.dni}"`,
       `"${c.aggressor.name.replace(/"/g, '""')}"`,
+      `"${c.aggressor.dni}"`,
       `"${c.violenceType}"`,
       `"${c.riskLevel}"`,
-      `"${c.assignedOfficer.replace(/"/g, '""')}"`,
       `"${c.status}"`,
       `"${c.incidentDate}"`,
       `"${c.incidentLocation.replace(/"/g, '""')}"`,
       `"${c.incidentDescription.replace(/"/g, '""').replace(/\n/g, ' ')}"`
     ].join(','));
 
-    // UTF-8 BOM + sep=, para compatibilidad total con Excel en español
-    const csvContent = "sep=,\n\uFEFF" + [headers.join(','), ...csvRows].join('\n');
+    // CRITICO: El BOM (\uFEFF) DEBE ir al inicio absoluto para que Excel reconozca tildes y la 'ñ'
+    // El 'sep=,' ayuda a que Excel use la coma como separador automáticamente
+    const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + csvRows.join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -139,8 +140,8 @@ export function DashboardView() {
     document.body.removeChild(link);
 
     toast({
-      title: "Exportación Excel Exitosa",
-      description: "El reporte se ha generado con formato optimizado para Excel."
+      title: "Excel Exportado",
+      description: "El reporte se ha generado con codificación corregida para tildes."
     });
   };
 
@@ -157,9 +158,8 @@ export function DashboardView() {
     const doc = new jsPDF('landscape');
     const timestamp = new Date().toLocaleString();
 
-    // Encabezado Institucional
     doc.setFontSize(16);
-    doc.setTextColor(54, 71, 125); // Primary color
+    doc.setTextColor(54, 71, 125); 
     doc.text('COMISARIA DE PAUCARTAMBO - CUSCO', 14, 20);
     
     doc.setFontSize(12);
@@ -168,7 +168,7 @@ export function DashboardView() {
     
     doc.setFontSize(9);
     doc.setTextColor(150);
-    doc.text(`Generado por: ${user?.username} | Fecha y Hora de Generación: ${timestamp}`, 14, 35);
+    doc.text(`Generado por: ${user?.username} | Fecha y Hora: ${timestamp}`, 14, 35);
 
     const tableHeaders = [
       ["EXPEDIENTE", "FECHA", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]
@@ -209,8 +209,8 @@ export function DashboardView() {
     doc.save(`Reporte_Oficial_Paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
 
     toast({
-      title: "Exportación PDF Exitosa",
-      description: "El reporte oficial ha sido descargado correctamente."
+      title: "PDF Exportado",
+      description: "El reporte oficial ha sido descargado."
     });
   };
 
@@ -261,10 +261,10 @@ export function DashboardView() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2 py-2">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (Formateado)
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (CSV Corregido)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2 py-2">
-                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF (Reporte)
+                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF (Reporte Oficial)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
