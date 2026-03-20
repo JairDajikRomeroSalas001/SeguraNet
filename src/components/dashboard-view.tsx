@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
@@ -28,15 +28,17 @@ export function DashboardView() {
   const [activeTab, setActiveTab] = useState('panel');
   const [allCases, setAllCases] = useState<PoliceCase[]>(getCases());
   const [filteredCases, setFilteredCases] = useState<PoliceCase[]>(getCases());
+  const [activeFilters, setActiveFilters] = useState<SearchFilters>({
+    query: '',
+    status: 'all',
+    riskLevel: 'all',
+    violenceType: 'all',
+    startDate: '',
+    endDate: '',
+  });
 
-  const refreshCases = useCallback(() => {
-    const updated = getCases();
-    setAllCases(updated);
-    setFilteredCases(updated);
-  }, []);
-
-  const handleSearch = useCallback((filters: SearchFilters) => {
-    let result = [...allCases];
+  const applyFilters = useCallback((casesToFilter: PoliceCase[], filters: SearchFilters) => {
+    let result = [...casesToFilter];
 
     if (filters.query) {
       const q = filters.query.toLowerCase();
@@ -76,7 +78,19 @@ export function DashboardView() {
     }
 
     setFilteredCases(result);
-  }, [allCases]);
+  }, []);
+
+  const refreshCases = useCallback(() => {
+    const updated = getCases();
+    setAllCases(updated);
+    // Aplicamos los filtros actuales a la nueva data
+    applyFilters(updated, activeFilters);
+  }, [activeFilters, applyFilters]);
+
+  const handleSearch = useCallback((filters: SearchFilters) => {
+    setActiveFilters(filters);
+    applyFilters(allCases, filters);
+  }, [allCases, applyFilters]);
 
   const handleExportCSV = () => {
     if (filteredCases.length === 0) {
@@ -124,8 +138,7 @@ export function DashboardView() {
       `"${c.incidentDescription.replace(/"/g, '""').replace(/\n/g, ' ')}"`
     ].join(','));
 
-    // CRITICO: El BOM (\uFEFF) DEBE ir al inicio absoluto para que Excel reconozca tildes y la 'ñ'
-    // El 'sep=,' ayuda a que Excel use la coma como separador automáticamente
+    // Marcador BOM para UTF-8 y separador explícito para Excel
     const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + csvRows.join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

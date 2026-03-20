@@ -55,10 +55,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const [showConfirmStatus, setShowConfirmStatus] = useState(false);
   const { toast } = useToast();
 
-  // Forzar limpieza de puntero si el componente se queda trabado por Radix
+  // LIMPIADOR DE SEGURIDAD: Evita que la interfaz se bloquee si Radix UI no limpia el body
   useEffect(() => {
     if (!selectedCase && !showConfirmStatus) {
       document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
     }
   }, [selectedCase, showConfirmStatus]);
 
@@ -72,26 +73,26 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   const confirmUpdateStatus = () => {
     if (selectedCase && newStatus) {
-      // 1. Ejecutar cambio en el store
+      // 1. Ejecutar cambio en el store de datos
       updateCaseStatus(selectedCase.id, newStatus);
       
-      // 2. Cerrar diálogos en orden inverso
+      // 2. Limpiar estados y cerrar todo
       setShowConfirmStatus(false);
       
-      // Pequeño delay para permitir que el AlertDialog cierre su overlay antes de quitar el Dialog principal
+      // Usamos un pequeño delay para asegurar que los overlays desaparezcan antes de refrescar
       setTimeout(() => {
         const caseNum = selectedCase.caseNumber;
         setSelectedCase(null);
         setNewStatus(null);
         
+        // 3. Notificar al padre para refrescar la vista
+        onUpdate();
+        
         toast({ 
           title: "Estado Actualizado", 
           description: `Expediente ${caseNum} actualizado con éxito.` 
         });
-        
-        // 3. Notificar al padre para refrescar la tabla
-        onUpdate();
-      }, 100);
+      }, 50);
     }
   };
 
@@ -216,19 +217,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     </p>
                   </div>
                 </div>
-
-                {selectedCase.riskFactors && selectedCase.riskFactors.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Factores de Riesgo Detectados:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCase.riskFactors.map(factorId => (
-                        <Badge key={factorId} variant="secondary" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
-                          {riskFactorOptions.find(o => o.id === factorId)?.label}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center gap-4 pt-4 border-t bg-muted/5 p-4 rounded-lg">
