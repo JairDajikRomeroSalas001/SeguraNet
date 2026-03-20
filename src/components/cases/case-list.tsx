@@ -5,11 +5,12 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, Phone, MapPin, AlertTriangle } from 'lucide-react';
+import { FileText, MoreHorizontal, CheckCircle2, Clock, ShieldAlert, Lock, User, Phone, MapPin, AlertTriangle, ClipboardList } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { updateCaseStatus } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: <Clock className="h-3 w-3" /> },
@@ -24,6 +25,17 @@ const riskColors: Record<string, string> = {
   'Severo': 'bg-orange-100 text-orange-700 border-orange-200',
   'Muy Severo': 'bg-red-100 text-red-700 border-red-200',
 };
+
+const riskFactorOptions = [
+  { id: "amenazas_muerte", label: "Amenazas de muerte" },
+  { id: "consumo_alcohol_drogas", label: "Consumo de alcohol o drogas" },
+  { id: "menores_involucrados", label: "Menores involucrados" },
+  { id: "antecedentes_violencia", label: "Antecedentes de violencia" },
+  { id: "uso_armas", label: "Uso de armas" },
+  { id: "violencia_escalada", label: "Violencia escalada" },
+  { id: "aislamiento_victima", label: "Aislamiento de la víctima" },
+  { id: "control_economico", label: "Control económico" },
+];
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
   const [selectedCase, setSelectedCase] = useState<PoliceCase | null>(null);
@@ -128,8 +140,49 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 </div>
               </div>
 
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
+                  <ClipboardList className="h-4 w-4" /> Detalles del Incidente
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
+                  <p className="text-sm"><strong>Fecha:</strong> {selectedCase.incidentDate}</p>
+                  <p className="text-sm"><strong>Hora:</strong> {selectedCase.incidentTime}</p>
+                  <div className="md:col-span-2">
+                    <p className="text-sm"><strong>Lugar:</strong> {selectedCase.incidentLocation}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-sm"><strong>Descripción de hechos:</strong></p>
+                    <p className="text-sm text-muted-foreground mt-1 bg-white p-3 rounded border italic">
+                      {selectedCase.incidentDescription}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedCase.riskFactors && selectedCase.riskFactors.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Factores de Riesgo Detectados:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCase.riskFactors.map(factorId => (
+                        <Badge key={factorId} variant="secondary" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                          {riskFactorOptions.find(o => o.id === factorId)?.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedCase.additionalObservations && (
+                  <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <p className="text-xs font-bold text-blue-800 uppercase mb-2">Observaciones Adicionales:</p>
+                    <p className="text-sm text-blue-900 leading-relaxed">{selectedCase.additionalObservations}</p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center gap-4 pt-4 border-t">
-                <p className="text-sm font-bold">Estado:</p>
+                <p className="text-sm font-bold">Estado del Caso:</p>
                 <Select defaultValue={selectedCase.status} onValueChange={(v) => setNewStatus(v as CaseStatus)}>
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>

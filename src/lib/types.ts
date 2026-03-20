@@ -24,6 +24,13 @@ export interface PoliceCase {
   // Paso 3: Clasificación del Incidente
   violenceType: string;
   riskLevel: RiskLevel;
+  // Paso 4: Detalles Adicionales
+  incidentDescription: string;
+  incidentDate: string;
+  incidentTime: string;
+  incidentLocation: string;
+  riskFactors: string[];
+  additionalObservations: string;
   // Metadatos
   status: CaseStatus;
   tags: string[];

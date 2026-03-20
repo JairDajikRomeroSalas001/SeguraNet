@@ -6,15 +6,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
-  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle, Shield
+  ChevronRight, ChevronLeft, Edit3, CheckCircle2, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
@@ -41,6 +43,12 @@ const caseSchema = z.object({
   aggressor: personSchema,
   violenceType: z.string().min(1, 'Tipo de violencia requerido'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
+  incidentDescription: z.string().min(1, 'Descripción requerida'),
+  incidentDate: z.string().min(1, 'Fecha del incidente requerida'),
+  incidentTime: z.string().min(1, 'Hora aproximada requerida'),
+  incidentLocation: z.string().min(1, 'Lugar del incidente requerido'),
+  riskFactors: z.array(z.string()).default([]),
+  additionalObservations: z.string().optional(),
 });
 
 type FormData = z.infer<typeof caseSchema>;
@@ -100,7 +108,17 @@ const riskOptions = [
   },
 ] as const;
 
-// Componente extraído fuera para evitar pérdida de foco (Re-renders)
+const riskFactorOptions = [
+  { id: "amenazas_muerte", label: "Amenazas de muerte" },
+  { id: "consumo_alcohol_drogas", label: "Consumo de alcohol o drogas" },
+  { id: "menores_involucrados", label: "Menores involucrados" },
+  { id: "antecedentes_violencia", label: "Antecedentes de violencia" },
+  { id: "uso_armas", label: "Uso de armas" },
+  { id: "violencia_escalada", label: "Violencia escalada" },
+  { id: "aislamiento_victima", label: "Aislamiento de la víctima" },
+  { id: "control_economico", label: "Control económico" },
+];
+
 const PersonFormFields = ({ 
   type, 
   title, 
@@ -240,6 +258,12 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
       violenceType: '',
       riskLevel: 'Leve',
+      incidentDescription: '',
+      incidentDate: new Date().toISOString().split('T')[0],
+      incidentTime: '',
+      incidentLocation: '',
+      riskFactors: [],
+      additionalObservations: '',
     },
   });
 
@@ -275,6 +299,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
     if (step === 1) fieldsToValidate = ['caseNumber', 'origin', 'entryDate', 'entryTime'];
     if (step === 2) fieldsToValidate = ['victim', 'aggressor'];
     if (step === 3) fieldsToValidate = ['violenceType', 'riskLevel'];
+    if (step === 4) fieldsToValidate = ['incidentDescription', 'incidentDate', 'incidentTime', 'incidentLocation'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(step + 1);
@@ -299,7 +324,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             <FilePlus className="h-5 w-5" /> Registro de Denuncia Policial
           </CardTitle>
           <div className="flex gap-1">
-            {[1, 2, 3, 4].map((s) => (
+            {[1, 2, 3, 4, 5].map((s) => (
               <div key={s} className={cn(
                 "h-2 w-8 rounded-full transition-all duration-300", 
                 s <= step ? 'bg-white' : 'bg-white/20'
@@ -476,9 +501,111 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             )}
 
             {step === 4 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2 border-b pb-2">
+                  <ClipboardList className="h-4 w-4" /> Paso 4: Detalles adicionales
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="incidentDate" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2"><Calendar className="h-4 w-4 text-primary/70" /> Fecha del incidente</FormLabel>
+                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="incidentTime" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary/70" /> Hora aproximada</FormLabel>
+                      <FormControl><Input type="time" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <FormField control={form.control} name="incidentLocation" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary/70" /> Lugar del incidente</FormLabel>
+                    <FormControl><Input placeholder="Especifique el lugar exacto del incidente" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="incidentDescription" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descripción del incidente</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describa brevemente los hechos reportados..." 
+                        className="min-h-[100px] resize-none"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <div className="space-y-4">
+                  <FormLabel className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Indicaciones de riesgo</FormLabel>
+                  <p className="text-xs text-muted-foreground">Marque los factores de riesgo presentados en el caso:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-xl bg-muted/20">
+                    {riskFactorOptions.map((option) => (
+                      <FormField
+                        key={option.id}
+                        control={form.control}
+                        name="riskFactors"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={option.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(option.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, option.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== option.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">
+                                {option.label}
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <FormField control={form.control} name="additionalObservations" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observaciones adicionales</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Información adicional relevante para el caso..." 
+                        className="min-h-[80px] resize-none"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription className="text-[10px]">Cualquier otro detalle que considere necesario para el seguimiento.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+            )}
+
+            {step === 5 && (
               <div className="space-y-6 animate-in zoom-in-95 fade-in duration-500">
                 <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /> Paso 4: Resumen Final</h3>
+                  <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-600" /> Paso 5: Resumen Final</h3>
                   <Badge className="bg-green-500 text-white border-none">Listo para Guardar</Badge>
                 </div>
                 <div className="grid grid-cols-1 gap-6 text-sm">
@@ -513,7 +640,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
                     <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(3)}><Edit3 className="h-3 w-3" /> Modificar</Button>
                     <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider">CLASIFICACIÓN Y RIESGO</h4>
-                    <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Tipo:</span>
                         <p className="font-semibold">{form.getValues().violenceType}</p>
@@ -526,6 +653,31 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                       </div>
                     </div>
                   </div>
+
+                  <div className="bg-muted/30 p-5 rounded-xl border border-primary/10 relative group">
+                    <Button type="button" variant="ghost" size="sm" className="absolute top-3 right-3 flex items-center gap-1 text-xs text-primary" onClick={() => setStep(4)}><Edit3 className="h-3 w-3" /> Modificar</Button>
+                    <h4 className="text-xs font-bold text-primary mb-3 uppercase tracking-wider">DETALLES DEL INCIDENTE</h4>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <p><strong>Fecha Incidente:</strong> {form.getValues().incidentDate}</p>
+                        <p><strong>Hora Incidente:</strong> {form.getValues().incidentTime}</p>
+                      </div>
+                      <p><strong>Lugar:</strong> {form.getValues().incidentLocation}</p>
+                      <p><strong>Descripción:</strong> {form.getValues().incidentDescription}</p>
+                      {form.getValues().riskFactors.length > 0 && (
+                        <div>
+                          <p className="font-bold mb-1">Factores de Riesgo:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {form.getValues().riskFactors.map(id => (
+                              <Badge key={id} variant="secondary" className="text-[10px]">
+                                {riskFactorOptions.find(o => o.id === id)?.label}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -534,7 +686,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
             <div className="flex justify-between gap-4">
               {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(step - 1)}><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button>}
               <div className="ml-auto flex gap-2">
-                {step < 4 ? (
+                {step < 5 ? (
                   <Button type="button" onClick={nextStep} className="px-8">Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
                 ) : (
                   <Button type="submit" className="bg-primary hover:bg-primary/90 shadow-xl px-10 h-11 transition-all hover:scale-[1.02]">
