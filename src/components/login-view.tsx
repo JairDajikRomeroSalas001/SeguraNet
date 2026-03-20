@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, User, Lock, AlertCircle } from 'lucide-react';
+import { ShieldCheck, User, Lock, AlertCircle, Shield } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function LoginView() {
@@ -25,43 +25,51 @@ export function LoginView() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary text-white mb-6 shadow-xl border-4 border-white">
-            <ShieldCheck className="h-10 w-10" />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 relative overflow-hidden">
+      {/* Elementos decorativos de fondo */}
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
+      
+      <div className="w-full max-w-md space-y-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary text-white mb-2 shadow-[0_0_40px_rgba(54,71,125,0.3)] border-4 border-white transition-transform hover:scale-105 duration-300">
+            <ShieldCheck className="h-12 w-12" />
           </div>
-          <h1 className="text-3xl font-extrabold text-primary tracking-tight mb-2">Paucartambo Segura</h1>
-          <p className="text-muted-foreground font-medium">Sistema de Registro de Denuncias</p>
-          <p className="text-xs text-muted-foreground/60 mt-1 uppercase tracking-widest">Comisaría de Paucartambo</p>
+          <div className="space-y-1">
+            <h1 className="text-4xl font-extrabold text-primary tracking-tight">Paucartambo Segura</h1>
+            <div className="flex items-center justify-center gap-2 text-muted-foreground font-semibold uppercase tracking-[0.3em] text-[10px]">
+              <Shield className="h-3 w-3" />
+              Comisaría de Paucartambo
+            </div>
+          </div>
         </div>
 
-        <Card className="border-none shadow-2xl">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-center">
-              Ingrese sus credenciales de oficial autorizado
+        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] backdrop-blur-sm bg-white/90">
+          <CardHeader className="space-y-1 pb-6 text-center border-b bg-muted/30 rounded-t-lg">
+            <CardTitle className="text-xl">Acceso Restringido</CardTitle>
+            <CardDescription>
+              Personal policial autorizado únicamente
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4">
+          <CardContent className="space-y-4 pt-8">
             {error && (
-              <Alert variant="destructive" className="animate-in fade-in zoom-in duration-300">
+              <Alert variant="destructive" className="animate-in zoom-in-95 duration-300">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error de acceso</AlertTitle>
                 <AlertDescription>
-                  Credenciales inválidas. Por favor intente de nuevo.
+                  Credenciales inválidas. Verifique su usuario y contraseña.
                 </AlertDescription>
               </Alert>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username">Usuario</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="username" className="text-xs font-bold uppercase text-muted-foreground ml-1">Usuario</Label>
+                <div className="relative group">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input 
                     id="username" 
-                    placeholder="Nombre de usuario" 
-                    className="pl-10"
+                    placeholder="ID de Oficial" 
+                    className="pl-10 h-11 transition-all border-muted focus:ring-primary/20"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -69,36 +77,35 @@ export function LoginView() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="password" className="text-xs font-bold uppercase text-muted-foreground ml-1">Contraseña</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input 
                     id="password" 
                     type="password" 
                     placeholder="••••••••" 
-                    className="pl-10"
+                    className="pl-10 h-11 transition-all border-muted focus:ring-primary/20"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 shadow-lg">
-                Ingresar al Sistema
+              <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 shadow-lg text-base font-bold transition-all hover:scale-[1.02] active:scale-95">
+                Iniciar Sesión
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2 text-center text-xs text-muted-foreground pt-0">
-            <div className="bg-secondary/50 p-3 rounded-md w-full border border-dashed border-primary/20">
-              <p className="font-semibold text-primary/70 mb-1">Cuentas de administrador predeterminadas:</p>
-              <p>User: <span className="font-mono">admin1</span> | Pass: <span className="font-mono">admin1</span></p>
-              <p>User: <span className="font-mono">admin2</span> | Pass: <span className="font-mono">admin2</span></p>
+          <CardFooter className="flex flex-col space-y-2 text-center text-[10px] text-muted-foreground pt-0 pb-8">
+            <div className="bg-secondary/30 p-4 rounded-xl w-full border border-dashed border-primary/20">
+              <p className="font-bold text-primary mb-1 uppercase tracking-wider">Modo Demo Activado</p>
+              <p>User: <span className="font-mono font-bold bg-white px-1 rounded">admin1</span> | Pass: <span className="font-mono font-bold bg-white px-1 rounded">admin1</span></p>
             </div>
           </CardFooter>
         </Card>
         
-        <p className="text-center text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">
-          República del Perú - Ministerio del Interior
+        <p className="text-center text-[9px] text-muted-foreground/60 uppercase tracking-[0.4em] font-bold">
+          Gobierno del Perú • Ministerio del Interior
         </p>
       </div>
     </div>

@@ -6,12 +6,12 @@ import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { getCases } from '@/lib/store';
-import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PoliceCase } from '@/lib/types';
-import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { isWithinInterval, parseISO, startOfDay, endOfDay, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -83,7 +83,6 @@ export function DashboardView() {
   const refreshCases = useCallback(() => {
     const updated = getCases();
     setAllCases(updated);
-    // Aplicamos los filtros activos a la nueva data para que el UI se actualice
     applyFilters(updated, activeFilters);
   }, [activeFilters, applyFilters]);
 
@@ -94,35 +93,34 @@ export function DashboardView() {
 
   const handleExportCSV = () => {
     if (filteredCases.length === 0) {
-      toast({ variant: "destructive", title: "Sin datos", description: "No hay denuncias para exportar con los filtros actuales." });
+      toast({ variant: "destructive", title: "Sin datos", description: "No hay denuncias para exportar." });
       return;
     }
 
     const headers = ["EXPEDIENTE", "OFICIAL ASIGNADO", "VÍCTIMA", "AGRESOR", "TIPO VIOLENCIA", "RIESGO", "ESTADO", "FECHA REGISTRO", "LUGAR INCIDENTE"];
     const rows = filteredCases.map(c => [
       `"${c.caseNumber}"`,
-      `"${c.assignedOfficer.replace(/"/g, '""')}"`,
-      `"${c.victim.name.replace(/"/g, '""')}"`,
-      `"${c.aggressor.name.replace(/"/g, '""')}"`,
+      `"${c.assignedOfficer}"`,
+      `"${c.victim.name}"`,
+      `"${c.aggressor.name}"`,
       `"${c.violenceType}"`,
       `"${c.riskLevel}"`,
       `"${c.status}"`,
       `"${c.entryDate} ${c.entryTime}"`,
-      `"${c.incidentLocation.replace(/"/g, '""')}"`
+      `"${c.incidentLocation}"`
     ].join(','));
 
-    // Marcador BOM UTF-8 y sep=, para compatibilidad total con Excel en español
     const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Reporte_Denuncias_Excel_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `Reporte_Paucartambo_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    toast({ title: "Excel Generado", description: "El reporte se ha descargado con formato compatible para Excel." });
+    toast({ title: "Excel Exportado", description: "El reporte se descargó correctamente." });
   };
 
   const handleExportPDF = () => {
@@ -132,13 +130,15 @@ export function DashboardView() {
     }
 
     const doc = new jsPDF('landscape');
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setTextColor(54, 71, 125); 
-    doc.text('COMISARIA PNP PAUCARTAMBO', 14, 20);
+    doc.text('COMISARIA PNP PAUCARTAMBO - CUSCO', 14, 20);
     doc.setFontSize(10);
-    doc.text('REPORTE GENERAL DE DENUNCIAS REGISTRADAS', 14, 28);
+    doc.setTextColor(100);
+    doc.text('REPORTE OFICIAL DE DENUNCIAS REGISTRADAS', 14, 28);
+    doc.text(`Generado por: ${user?.username} - ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 14, 34);
     
-    const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO", "ACTUALIZADO"]];
+    const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "TIPO VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]];
     const tableData = filteredCases.map(c => [
       c.caseNumber,
       c.victim.name,
@@ -146,94 +146,124 @@ export function DashboardView() {
       c.violenceType,
       c.riskLevel,
       c.assignedOfficer,
-      c.status,
-      format(new Date(c.updatedAt), 'dd/MM/yy HH:mm')
+      c.status
     ]);
 
     (doc as any).autoTable({
       head: tableHeaders,
       body: tableData,
-      startY: 35,
+      startY: 40,
       theme: 'grid',
-      headStyles: { fillColor: [54, 71, 125] },
-      styles: { fontSize: 8 }
+      headStyles: { fillColor: [54, 71, 125], fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 }
     });
 
-    doc.save(`Reporte_Oficial_Paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast({ title: "PDF Generado", description: "El reporte oficial ha sido descargado." });
+    doc.save(`Reporte_Oficial_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast({ title: "PDF Generado", description: "Reporte listo para impresión oficial." });
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="bg-primary text-primary-foreground py-4 px-6 flex justify-between items-center shadow-md sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="bg-white/10 p-2 rounded-full"><ShieldCheck className="h-6 w-6" /></div>
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
+      <header className="bg-primary text-primary-foreground py-4 px-8 flex justify-between items-center shadow-[0_4px_20px_rgba(54,71,125,0.2)] sticky top-0 z-50 backdrop-blur-md bg-primary/95">
+        <div className="flex items-center gap-4 group cursor-default">
+          <div className="bg-white/10 p-2.5 rounded-2xl transition-transform group-hover:scale-110 duration-300">
+            <ShieldCheck className="h-7 w-7 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Paucartambo Segura</h1>
-            <p className="text-[10px] text-white/70 uppercase tracking-widest font-semibold">Comisaría de Paucartambo - Cusco</p>
+            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+              Paucartambo Segura
+              <Badge variant="outline" className="text-[9px] border-white/20 text-white/80 font-bold tracking-[0.2em] px-2 py-0">OFICIAL</Badge>
+            </h1>
+            <div className="flex items-center gap-2 text-[10px] text-white/60 uppercase tracking-widest font-bold">
+              <Shield className="h-3 w-3" />
+              Ministerio del Interior • PNP Paucartambo
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-sm font-semibold">{user?.username}</span>
-            <span className="text-[10px] uppercase tracking-wider opacity-80">Oficial Administrativo</span>
+        <div className="flex items-center gap-6">
+          <div className="hidden lg:flex flex-col items-end border-r border-white/10 pr-6">
+            <span className="text-sm font-bold tracking-tight">{user?.username}</span>
+            <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Oficial Administrativo</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/10 ml-2">
-            <LogOut className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={logout} 
+            className="hover:bg-destructive/20 hover:text-white transition-all gap-2 font-bold px-4 rounded-xl border border-white/10"
+          >
+            <LogOut className="h-4 w-4" /> 
+            <span className="hidden sm:inline">SALIR</span>
           </Button>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto py-8 px-4 max-w-7xl">
+      <main className="flex-1 container mx-auto py-10 px-6 max-w-7xl animate-in fade-in duration-700">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-            <TabsList className="bg-white border shadow-sm p-1 h-12">
-              <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 font-bold">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <TabsList className="bg-white border shadow-sm p-1.5 h-14 rounded-2xl w-full md:w-auto">
+              <TabsTrigger 
+                value="panel" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-8 rounded-xl font-bold transition-all"
+              >
                 <LayoutDashboard className="h-4 w-4" /> VISTA GENERAL
               </TabsTrigger>
-              <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 font-bold">
-                <FilePlus className="h-4 w-4" /> NUEVA DENUNCIA
+              <TabsTrigger 
+                value="registro" 
+                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-8 rounded-xl font-bold transition-all"
+              >
+                <FilePlus className="h-4 w-4" /> REGISTRAR DENUNCIA
               </TabsTrigger>
             </TabsList>
             
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-4 w-full md:w-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-white font-bold text-xs h-9 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
-                    <Download className="h-4 w-4 mr-2" /> EXPORTAR DATOS
+                  <Button variant="outline" className="bg-white font-bold h-12 px-6 border-primary/10 text-primary hover:bg-primary/5 transition-all shadow-sm rounded-2xl gap-2">
+                    <Download className="h-4 w-4" /> EXPORTAR
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2 py-2">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (Formato Seguro)
+                <DropdownMenuContent align="end" className="w-64 rounded-xl p-2 shadow-xl border-primary/10">
+                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-emerald-50 focus:text-emerald-700">
+                    <div className="p-1.5 bg-emerald-100 rounded-md"><FileSpreadsheet className="h-4 w-4" /></div>
+                    <span className="font-bold text-xs uppercase tracking-wider">Exportar a Excel</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2 py-2">
-                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF (Reporte Oficial)
+                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-rose-50 focus:text-rose-700">
+                    <div className="p-1.5 bg-rose-100 rounded-md"><FileText className="h-4 w-4" /></div>
+                    <span className="font-bold text-xs uppercase tracking-wider">Reporte PDF Oficial</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Badge variant="outline" className="bg-white border-primary/20 text-primary py-1.5 px-4 font-bold h-9">
-                {filteredCases.length} EXPEDIENTES
-              </Badge>
+              <div className="h-12 flex items-center px-6 bg-white border border-primary/10 rounded-2xl shadow-sm">
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-3">TOTAL</span>
+                <span className="text-xl font-black text-primary">{filteredCases.length}</span>
+              </div>
             </div>
           </div>
 
-          <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <TabsContent value="panel" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="space-y-6">
               <CaseSearch onSearch={handleSearch} />
               <CaseList cases={filteredCases} onUpdate={refreshCases} />
             </div>
           </TabsContent>
 
-          <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CaseRegistrationForm onCaseAdded={() => { refreshCases(); setActiveTab('panel'); }} />
           </TabsContent>
         </Tabs>
       </main>
 
-      <footer className="py-6 px-6 border-t bg-white text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">
-        República del Perú - Ministerio del Interior - Comisaría PNP Paucartambo © {new Date().getFullYear()}
+      <footer className="py-8 px-8 border-t bg-white text-center">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em]">SISTEMA DE SEGURIDAD PAUCARTAMBO</span>
+          </div>
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em]">
+            República del Perú • Ministerio del Interior • Comisaría PNP Paucartambo © {new Date().getFullYear()}
+          </p>
+        </div>
       </footer>
     </div>
   );
