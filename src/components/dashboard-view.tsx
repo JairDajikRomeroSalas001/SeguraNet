@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useCallback } from 'react';
@@ -6,13 +7,21 @@ import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { getCases } from '@/lib/store';
-import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download } from 'lucide-react';
+import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PoliceCase } from '@/lib/types';
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export function DashboardView() {
   const { user, logout } = useAuth();
@@ -30,7 +39,6 @@ export function DashboardView() {
   const handleSearch = useCallback((filters: SearchFilters) => {
     let result = [...allCases];
 
-    // Filtro por texto (Expediente o Víctima)
     if (filters.query) {
       const q = filters.query.toLowerCase();
       result = result.filter(c => 
@@ -39,22 +47,18 @@ export function DashboardView() {
       );
     }
 
-    // Filtro por Estado
     if (filters.status && filters.status !== 'all') {
       result = result.filter(c => c.status === filters.status);
     }
 
-    // Filtro por Nivel de Riesgo
     if (filters.riskLevel && filters.riskLevel !== 'all') {
       result = result.filter(c => c.riskLevel === filters.riskLevel);
     }
 
-    // Filtro por Tipo de Violencia
     if (filters.violenceType && filters.violenceType !== 'all') {
       result = result.filter(c => c.violenceType === filters.violenceType);
     }
 
-    // Filtro por Rango de Fechas
     if (filters.startDate || filters.endDate) {
       result = result.filter(c => {
         const caseDate = parseISO(c.entryDate);
@@ -85,7 +89,6 @@ export function DashboardView() {
       return;
     }
 
-    // Definir encabezados
     const headers = [
       "Nro. Expediente",
       "Fecha Entrada",
@@ -102,40 +105,93 @@ export function DashboardView() {
       "Fecha Incidente"
     ];
 
-    // Formatear filas
     const csvRows = filteredCases.map(c => [
-      c.caseNumber,
-      c.entryDate,
-      c.entryTime,
+      `"${c.caseNumber}"`,
+      `"${c.entryDate}"`,
+      `"${c.entryTime}"`,
       `"${c.victim.name.replace(/"/g, '""')}"`,
-      c.victim.dni,
+      `"${c.victim.dni}"`,
       `"${c.aggressor.name.replace(/"/g, '""')}"`,
-      c.aggressor.dni,
-      c.violenceType,
-      c.riskLevel,
+      `"${c.aggressor.dni}"`,
+      `"${c.violenceType}"`,
+      `"${c.riskLevel}"`,
       `"${c.assignedOfficer.replace(/"/g, '""')}"`,
-      c.status,
+      `"${c.status}"`,
       `"${c.incidentLocation.replace(/"/g, '""')}"`,
-      c.incidentDate
+      `"${c.incidentDate}"`
     ].join(','));
 
-    // Combinar todo
+    // UTF-8 BOM para que Excel reconozca los caracteres especiales
     const csvContent = "\uFEFF" + [headers.join(','), ...csvRows].join('\n');
     
-    // Crear blob y descargar
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `reporte_denuncias_paucartambo_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `reporte_denuncias_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     toast({
-      title: "Exportación Exitosa",
-      description: "El reporte se ha descargado correctamente."
+      title: "Exportación Excel Exitosa",
+      description: "El archivo CSV optimizado para Excel ha sido descargado."
+    });
+  };
+
+  const handleExportPDF = () => {
+    if (filteredCases.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error de exportación",
+        description: "No hay datos filtrados para exportar."
+      });
+      return;
+    }
+
+    const doc = new jsPDF('landscape');
+    const timestamp = new Date().toLocaleString();
+
+    // Encabezado
+    doc.setFontSize(16);
+    doc.setTextColor(40);
+    doc.text('COMISARIA DE PAUCARTAMBO - CUSCO', 14, 20);
+    doc.setFontSize(12);
+    doc.text('REPORTE DE DENUNCIAS REGISTRADAS', 14, 28);
+    doc.setFontSize(10);
+    doc.text(`Generado por: ${user?.username} | Fecha: ${timestamp}`, 14, 35);
+
+    const tableHeaders = [
+      ["EXPEDIENTE", "FECHA", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]
+    ];
+
+    const tableData = filteredCases.map(c => [
+      c.caseNumber,
+      c.entryDate,
+      c.victim.name,
+      c.aggressor.name,
+      c.violenceType,
+      c.riskLevel,
+      c.assignedOfficer,
+      c.status
+    ]);
+
+    (doc as any).autoTable({
+      head: tableHeaders,
+      body: tableData,
+      startY: 40,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillStyle: 'F', fillColor: [54, 71, 125], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save(`reporte_paucartambo_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    toast({
+      title: "Exportación PDF Exitosa",
+      description: "El reporte oficial en PDF ha sido generado."
     });
   };
 
@@ -174,14 +230,26 @@ export function DashboardView() {
             </TabsList>
             
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportCSV}
-                className="bg-white font-bold text-xs h-9 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-              >
-                <Download className="h-4 w-4 mr-2" /> EXPORTAR EXCEL
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-white font-bold text-xs h-9 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                  >
+                    <Download className="h-4 w-4 mr-2" /> EXPORTAR DATOS
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar a Excel (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2">
+                    <FileText className="h-4 w-4 text-rose-600" /> Exportar a PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Badge variant="outline" className="bg-white border-primary/20 text-primary py-1.5 px-4 font-bold h-9">
                 {filteredCases.length} EXPEDIENTES
               </Badge>
