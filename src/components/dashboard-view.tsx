@@ -7,7 +7,7 @@ import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { SettingsView } from './settings-view';
 import { getCases } from '@/lib/store';
-import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield, Settings } from 'lucide-react';
+import { LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -111,6 +113,7 @@ export function DashboardView() {
       `"${c.incidentLocation}"`
     ].join(','));
 
+    // UTF-8 BOM para soporte de tildes en Excel
     const csvContent = "\uFEFF" + "sep=,\n" + headers.join(',') + "\n" + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -181,20 +184,47 @@ export function DashboardView() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="hidden lg:flex flex-col items-end border-r border-white/10 pr-6">
-            <span className="text-sm font-bold tracking-tight">{user?.username}</span>
-            <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Oficial Administrativo</span>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={logout} 
-            className="hover:bg-destructive/20 hover:text-white transition-all gap-2 font-bold px-4 rounded-xl border border-white/10"
-          >
-            <LogOut className="h-4 w-4" /> 
-            <span className="hidden sm:inline">SALIR</span>
-          </Button>
+        
+        <div className="flex items-center gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-3 px-4 py-6 hover:bg-white/10 rounded-xl transition-all border border-white/5">
+                <div className="hidden lg:flex flex-col items-end text-right">
+                  <span className="text-sm font-bold tracking-tight">{user?.username}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Oficial Administrativo</span>
+                </div>
+                <div className="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                  <UserIcon className="h-5 w-5 text-white" />
+                </div>
+                <ChevronDown className="h-4 w-4 text-white/50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-2xl border-primary/10">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest px-3 py-2">
+                Mi Perfil Oficial
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => setActiveTab('configuracion')}
+                className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-primary/5 focus:text-primary transition-colors"
+              >
+                <div className="p-1.5 bg-primary/10 rounded-md text-primary">
+                  <Settings className="h-4 w-4" />
+                </div>
+                <span className="font-bold text-xs uppercase tracking-wider">Configuración</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={logout}
+                className="cursor-pointer gap-3 py-3 rounded-lg focus:bg-destructive/10 focus:text-destructive transition-colors"
+              >
+                <div className="p-1.5 bg-destructive/10 rounded-md text-destructive">
+                  <LogOut className="h-4 w-4" />
+                </div>
+                <span className="font-bold text-xs uppercase tracking-wider">Cerrar Sesión</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -214,15 +244,9 @@ export function DashboardView() {
               >
                 <FilePlus className="h-4 w-4" /> REGISTRAR DENUNCIA
               </TabsTrigger>
-              <TabsTrigger 
-                value="configuracion" 
-                className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-11 px-6 rounded-xl font-bold transition-all whitespace-nowrap"
-              >
-                <Settings className="h-4 w-4" /> CONFIGURACIÓN
-              </TabsTrigger>
             </TabsList>
             
-            {activeTab !== 'configuracion' && (
+            {activeTab === 'panel' && (
               <div className="flex items-center gap-4 w-full md:w-auto">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
