@@ -17,6 +17,7 @@ import { useAuth } from '@/components/auth-context';
 import { CaseRegistrationForm } from './case-registration-form';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Separator } from '@/components/ui/separator';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -135,84 +136,120 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   const generateIndividualPDF = (c: PoliceCase) => {
     const doc = new jsPDF();
-    const primaryColor = [54, 71, 125];
+    const primaryColor = [54, 71, 125]; // Navy Blue
+    const accentColor = [38, 98, 216]; // Accent Blue
+    const destructiveColor = [220, 38, 38]; // Red
     
-    // Header
-    doc.setFillColor(54, 71, 125);
-    doc.rect(0, 0, 210, 40, 'F');
+    // Header background
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 45, 'F');
+    
+    // Logo placeholder (Using a generic shield visual if possible or text)
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('POLICÍA NACIONAL DEL PERÚ', 105, 15, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text('COMISARÍA PNP PAUCARTAMBO - CUSCO', 105, 25, { align: 'center' });
+    doc.text('PNP', 20, 25);
+    
+    doc.setFontSize(16);
+    doc.text('POLICÍA NACIONAL DEL PERÚ', 105, 18, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('COMISARÍA PNP PAUCARTAMBO - REGIÓN CUSCO', 105, 26, { align: 'center' });
     doc.setFontSize(10);
-    doc.text(`EXPEDIENTE OFICIAL: ${c.caseNumber}`, 105, 33, { align: 'center' });
+    doc.text('SISTEMA DE GESTIÓN "PAUCARTAMBO SEGURA"', 105, 33, { align: 'center' });
+    
+    // Case number badge
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(65, 36, 80, 7, 2, 2, 'F');
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`EXPEDIENTE N°: ${c.caseNumber}`, 105, 41, { align: 'center' });
 
     doc.setTextColor(0, 0, 0);
-    let y = 50;
+    let y = 60;
 
-    // Table Style Sections
-    const section = (title: string, data: any[][]) => {
-      doc.setFontSize(10);
+    // Helper function for sections
+    const drawSectionHeader = (title: string, color: number[]) => {
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(14, y, 182, 7, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text(title, 14, y);
-      y += 5;
+      doc.text(title.toUpperCase(), 18, y + 5);
+      y += 10;
+    };
+
+    const drawTable = (data: any[][]) => {
       (doc as any).autoTable({
         startY: y,
         body: data,
         theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 2 },
-        columnStyles: { 0: { fontStyle: 'bold', width: 40 } },
-        margin: { left: 14 }
+        styles: { fontSize: 8.5, cellPadding: 2, textColor: [40, 40, 40] },
+        columnStyles: { 0: { fontStyle: 'bold', width: 45, textColor: [0, 0, 0] } },
+        margin: { left: 14, right: 14 }
       });
-      y = (doc as any).lastAutoTable.finalY + 10;
+      y = (doc as any).lastAutoTable.finalY + 8;
     };
 
-    section('DATOS GENERALES DEL REGISTRO', [
-      ['N° EXPEDIENTE', c.caseNumber],
-      ['FECHA DE REGISTRO', format(new Date(c.entryDate), 'dd/MM/yyyy')],
-      ['HORA DE REGISTRO', c.entryTime],
-      ['OFICIAL ASIGNADO', c.assignedOfficer],
-      ['ORIGEN DENUNCIA', c.origin],
-      ['ESTADO ACTUAL', c.status.toUpperCase()]
+    // 1. General Data
+    drawSectionHeader('Información General del Registro', primaryColor);
+    drawTable([
+      ['OFICIAL ENCARGADO', c.assignedOfficer],
+      ['ORIGEN DEL CASO', c.origin],
+      ['FECHA Y HORA DE ENTRADA', `${format(new Date(c.entryDate), 'dd/MM/yyyy')} - ${c.entryTime}`],
+      ['ESTADO ADMINISTRATIVO', c.status.toUpperCase()]
     ]);
 
-    section('DATOS DE LA VÍCTIMA', [
+    // 2. Victim Data
+    drawSectionHeader('Identificación de la Víctima', accentColor);
+    drawTable([
       ['NOMBRE COMPLETO', c.victim.name],
-      ['DNI', c.victim.dni],
-      ['TELÉFONO', c.victim.phone],
-      ['DIRECCIÓN', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`],
-      ['REFERENCIA', c.victim.reference || 'N/A']
+      ['DNI / IDENTIDAD', c.victim.dni],
+      ['TELÉFONO DE CONTACTO', c.victim.phone],
+      ['DOMICILIO ACTUAL', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`],
+      ['REFERENCIA DOMICILIARIA', c.victim.reference || 'NO REGISTRA']
     ]);
 
-    section('DATOS DEL AGRESOR', [
+    // 3. Aggressor Data
+    drawSectionHeader('Identificación del Presunto Agresor', destructiveColor);
+    drawTable([
       ['NOMBRE COMPLETO', c.aggressor.name],
-      ['DNI', c.aggressor.dni],
-      ['TELÉFONO', c.aggressor.phone],
-      ['DIRECCIÓN', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`]
+      ['DNI / IDENTIDAD', c.aggressor.dni],
+      ['TELÉFONO DE CONTACTO', c.aggressor.phone],
+      ['DOMICILIO CONOCIDO', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`]
     ]);
 
-    section('CLASIFICACIÓN Y HECHOS', [
+    // 4. Incident Details
+    drawSectionHeader('Detalle de los Hechos y Clasificación', primaryColor);
+    drawTable([
       ['TIPO DE VIOLENCIA', c.violenceType],
-      ['NIVEL DE RIESGO', c.riskLevel],
+      ['NIVEL DE RIESGO ASIGNADO', c.riskLevel.toUpperCase()],
       ['LUGAR DEL SUCESO', c.incidentLocation],
-      ['FECHA DEL HECHO', format(new Date(c.incidentDate), 'dd/MM/yyyy')],
-      ['HORA DEL HECHO', c.incidentTime],
-      ['DESCRIPCIÓN', c.incidentDescription]
+      ['FECHA Y HORA DEL HECHO', `${format(new Date(c.incidentDate), 'dd/MM/yyyy')} aprox. ${c.incidentTime}`]
     ]);
 
-    if (c.additionalObservations) {
-      section('OBSERVACIONES ADICIONALES', [[ 'DETALLE', c.additionalObservations ]]);
-    }
-
-    // Footer Signature
-    const pageHeight = doc.internal.pageSize.height;
-    doc.line(60, pageHeight - 40, 150, pageHeight - 40);
+    // Description Box
+    doc.setFillColor(245, 245, 245);
+    doc.rect(14, y, 182, 30, 'F');
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.setFontSize(8);
-    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 35, { align: 'center' });
-    doc.text(`Generado por Paucartambo Segura el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 105, pageHeight - 15, { align: 'center' });
+    doc.text('DESCRIPCIÓN DE LOS HECHOS:', 18, y + 5);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    const splitDesc = doc.splitTextToSize(c.incidentDescription, 174);
+    doc.text(splitDesc, 18, y + 10);
+    y += 40;
+
+    // Footer Signatures
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(60, pageHeight - 45, 150, pageHeight - 45);
+    doc.setFontSize(7);
+    doc.setTextColor(100);
+    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 40, { align: 'center' });
+    doc.text(`Documento generado digitalmente por Paucartambo Segura el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 105, pageHeight - 15, { align: 'center' });
+    doc.text('Codex Cusco - Innovación Tecnológica para la Seguridad', 105, pageHeight - 10, { align: 'center' });
 
     doc.save(`EXPEDIENTE_${c.caseNumber}.pdf`);
   };
@@ -507,7 +544,3 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     </div>
   );
 }
-
-const Separator = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`h-[1px] w-full bg-border ${className}`} {...props} />
-);
