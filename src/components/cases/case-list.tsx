@@ -149,44 +149,44 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
     // --- Header Section ---
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 45, 'F');
+    doc.rect(0, 0, 210, 40, 'F');
 
     // Logo Visual (Shield Graphic)
     doc.setDrawColor(255, 255, 255);
     doc.setLineWidth(0.8);
-    doc.circle(25, 22, 10, 'S');
+    doc.circle(25, 20, 9, 'S');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('PNP', 25, 23.5, { align: 'center' });
+    doc.text('PNP', 25, 21, { align: 'center' });
 
-    doc.setFontSize(15);
-    doc.text('POLICÍA NACIONAL DEL PERÚ', 110, 15, { align: 'center' });
-    doc.setFontSize(9);
+    doc.setFontSize(14);
+    doc.text('POLICÍA NACIONAL DEL PERÚ', 110, 14, { align: 'center' });
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('REGIÓN POLICIAL CUSCO - COMISARÍA PAUCARTAMBO', 110, 21, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text('SISTEMA DE GESTIÓN DE DENUNCIAS "PAUCARTAMBO SEGURA"', 110, 26, { align: 'center' });
+    doc.text('REGIÓN POLICIAL CUSCO - COMISARÍA PAUCARTAMBO', 110, 19, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.text('SISTEMA DE GESTIÓN DE DENUNCIAS "PAUCARTAMBO SEGURA"', 110, 24, { align: 'center' });
 
     // Case Number Badge in Header
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(65, 32, 90, 7, 1.5, 1.5, 'F');
+    doc.roundedRect(65, 29, 90, 6, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
-    doc.text(`EXPEDIENTE NRO: ${c.caseNumber}`, 110, 36.8, { align: 'center' });
+    doc.text(`EXPEDIENTE NRO: ${c.caseNumber}`, 110, 33.2, { align: 'center' });
 
-    let y = 55;
+    let y = 48;
 
     // --- Helper Functions ---
     const drawSectionHeader = (title: string, color: number[], icon: string) => {
       doc.setFillColor(color[0], color[1], color[2]);
-      doc.roundedRect(14, y, 182, 6, 1, 1, 'F');
+      doc.roundedRect(14, y, 182, 5, 1, 1, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${icon}  ${title.toUpperCase()}`, 18, y + 4.2);
-      y += 8;
+      doc.text(`${icon}  ${title.toUpperCase()}`, 18, y + 3.5);
+      y += 7;
     };
 
     const drawDataTable = (data: any[][]) => {
@@ -194,11 +194,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         startY: y,
         body: data,
         theme: 'plain',
-        styles: { fontSize: 7.5, cellPadding: 1.5, textColor: textColor, font: 'helvetica' },
-        columnStyles: { 0: { fontStyle: 'bold', width: 45, textColor: [0, 0, 0] } },
+        styles: { fontSize: 7, cellPadding: 1, textColor: textColor, font: 'helvetica' },
+        columnStyles: { 0: { fontStyle: 'bold', width: 40, textColor: [0, 0, 0] } },
         margin: { left: 16, right: 16 }
       });
-      y = (doc as any).lastAutoTable.finalY + 5;
+      y = (doc as any).lastAutoTable.finalY + 3;
     };
 
     // 1. Datos Generales
@@ -242,51 +242,51 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
     // --- Description Text Box ---
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-    doc.roundedRect(14, y, 182, 30, 1.5, 1.5, 'F');
+    doc.roundedRect(14, y, 182, 25, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('DESCRIPCIÓN DETALLADA DE LOS HECHOS:', 18, y + 5);
+    doc.text('DESCRIPCIÓN DETALLADA DE LOS HECHOS:', 18, y + 4.5);
     
     doc.setTextColor(60, 60, 60);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     const splitDescription = doc.splitTextToSize(c.incidentDescription, 174);
-    doc.text(splitDescription, 18, y + 10);
-    y += 35;
+    doc.text(splitDescription, 18, y + 9);
+    y += 30;
 
     // --- Footer & Signatures ---
     const pageHeight = doc.internal.pageSize.height;
     
     // Digital Stamp / QR Box (Modern detail)
     doc.setDrawColor(220, 220, 220);
-    doc.rect(14, pageHeight - 55, 30, 30);
-    doc.setFontSize(6);
+    doc.rect(14, pageHeight - 50, 25, 25);
+    doc.setFontSize(5.5);
     doc.setTextColor(180, 180, 180);
-    doc.text('SELLO DIGITAL\nADMINISTRATIVO', 29, pageHeight - 40, { align: 'center' });
+    doc.text('SELLO DIGITAL\nADMINISTRATIVO', 26.5, pageHeight - 38, { align: 'center' });
 
     // Signature Line
     doc.setDrawColor(100, 100, 100);
     doc.setLineWidth(0.4);
     doc.line(70, pageHeight - 35, 140, pageHeight - 35);
     doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 30, { align: 'center' });
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.text(c.assignedOfficer, 105, pageHeight - 26, { align: 'center' });
     doc.text('COMISARÍA PNP PAUCARTAMBO', 105, pageHeight - 22, { align: 'center' });
 
     // Final Branding Footer
     doc.setFillColor(241, 245, 249);
-    doc.rect(0, pageHeight - 12, 210, 12, 'F');
+    doc.rect(0, pageHeight - 10, 210, 10, 'F');
     doc.setTextColor(148, 163, 184);
-    doc.setFontSize(6.5);
-    doc.text(`Documento generado electrónicamente el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | Sistema Paucartambo Segura v2.0`, 105, pageHeight - 7.5, { align: 'center' });
+    doc.setFontSize(6);
+    doc.text(`Documento generado electrónicamente el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | Sistema Paucartambo Segura v2.0`, 105, pageHeight - 6, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('DESARROLLADO POR CODEX CUSCO - INNOVACIÓN TECNOLÓGICA PARA LA SEGURIDAD CIUDADANA', 105, pageHeight - 4, { align: 'center' });
+    doc.text('DESARROLLADO POR CODEX CUSCO - INNOVACIÓN TECNOLÓGICA PARA LA SEGURIDAD CIUDADANA', 105, pageHeight - 3, { align: 'center' });
 
     doc.save(`EXPEDIENTE_${c.caseNumber}_PAUCARTAMBO.pdf`);
   };
@@ -529,7 +529,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                passwordPurpose === 'edit-entry' ? 'Autorizar Edición de Datos' : 
                'Confirmar Guardado de Edición'}
             </DialogTitle>
-            <DialogDescription className="space-y-4 pt-2">
+            <DialogDescription asChild className="space-y-4 pt-2">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left">
                 <p className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-3 w-3" /> Advertencia Administrativa
