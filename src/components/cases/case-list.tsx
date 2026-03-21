@@ -5,17 +5,18 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateCaseStatus } from '@/lib/store';
+import { updateCaseStatus, updateCase } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/auth-context';
+import { CaseRegistrationForm } from './case-registration-form';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -34,16 +35,24 @@ const riskColors: Record<string, string> = {
 
 const ITEMS_PER_PAGE = 10;
 
+type PasswordPurpose = 'status' | 'edit-entry' | 'edit-save';
+
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
-  const [changingStatus, setChangingStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
+  
+  // Estados para manejo de password y propósitos
+  const [passwordPurpose, setPasswordPurpose] = useState<PasswordPurpose | null>(null);
+  const [targetStatus, setTargetStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
+  const [targetEdit, setTargetEdit] = useState<PoliceCase | null>(null);
+  const [pendingEditData, setPendingEditData] = useState<PoliceCase | null>(null);
+  
+  const [isEditingFormOpen, setIsEditingFormOpen] = useState(false);
   const [passwordVerify, setPasswordVerify] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const { toast } = useToast();
 
-  // Reset page when cases filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [cases.length]);
@@ -54,33 +63,57 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       document.body.style.overflow = 'auto';
     };
     
-    if (!viewingCase && !changingStatus) {
+    if (!viewingCase && !passwordPurpose && !isEditingFormOpen) {
       const timer = setTimeout(cleanup, 100);
       return () => clearTimeout(timer);
     }
-  }, [viewingCase, changingStatus]);
+  }, [viewingCase, passwordPurpose, isEditingFormOpen]);
 
   const totalPages = Math.ceil(cases.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedCases = cases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // Manejadores para Cambio de Estado
   const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
-    setChangingStatus({ id: caseId, caseNumber, status: newStatus });
+    setTargetStatus({ id: caseId, caseNumber, status: newStatus });
+    setPasswordPurpose('status');
     setPasswordVerify('');
     setPasswordError(false);
   };
 
-  const handleCancelStatusChange = () => {
-    setChangingStatus(null);
+  // Manejadores para Edición
+  const handleEditEntryAttempt = (pCase: PoliceCase) => {
+    setTargetEdit(pCase);
+    setPasswordPurpose('edit-entry');
     setPasswordVerify('');
     setPasswordError(false);
   };
 
-  const confirmStatusChange = () => {
-    if (!changingStatus) return;
+  const handleEditSaveAttempt = (updatedData: PoliceCase) => {
+    setPendingEditData(updatedData);
+    setPasswordPurpose('edit-save');
+    setPasswordVerify('');
+    setPasswordError(false);
+  };
 
-    // Validación de seguridad demo: coincide con el nombre de usuario
-    if (passwordVerify !== user?.username) {
+  const handleCancelPassword = () => {
+    setPasswordPurpose(null);
+    setTargetStatus(null);
+    setTargetEdit(null);
+    setPendingEditData(null);
+    setPasswordVerify('');
+    setPasswordError(false);
+  };
+
+  const confirmAction = () => {
+    if (!passwordPurpose) return;
+
+    // Validación simulada con localStorage
+    const credsStr = localStorage.getItem('ps_credentials');
+    const credentials = credsStr ? JSON.parse(credsStr) : [];
+    const currentCred = credentials.find((c: any) => c.username === user?.username);
+
+    if (passwordVerify !== currentCred?.password) {
       setPasswordError(true);
       toast({
         variant: "destructive",
@@ -90,17 +123,25 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       return;
     }
 
-    updateCaseStatus(changingStatus.id, changingStatus.status);
-    setChangingStatus(null);
-    setPasswordVerify('');
-    
-    requestAnimationFrame(() => {
+    if (passwordPurpose === 'status' && targetStatus) {
+      updateCaseStatus(targetStatus.id, targetStatus.status);
+      toast({ title: "Cambio Autorizado", description: "Estado actualizado." });
       onUpdate();
-      toast({ 
-        title: "Cambio Autorizado", 
-        description: "El estado ha sido actualizado correctamente." 
-      });
-    });
+      handleCancelPassword();
+    } 
+    else if (passwordPurpose === 'edit-entry' && targetEdit) {
+      setIsEditingFormOpen(true);
+      const dataToEdit = {...targetEdit};
+      setTargetEdit(dataToEdit);
+      setPasswordPurpose(null); // Cerrar diálogo de password para mostrar form
+    }
+    else if (passwordPurpose === 'edit-save' && pendingEditData) {
+      updateCase(pendingEditData);
+      toast({ title: "Edición Exitosa", description: "Expediente actualizado correctamente." });
+      setIsEditingFormOpen(false);
+      onUpdate();
+      handleCancelPassword();
+    }
   };
 
   if (cases.length === 0) {
@@ -166,14 +207,24 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 gap-1.5 text-[10px] font-black border-primary/20 text-primary hover:bg-primary hover:text-white rounded-lg px-3"
-                    onClick={() => setViewingCase(c)}
-                  >
-                    <Eye className="h-3 w-3" /> VER EXPEDIENTE
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 gap-1 text-[9px] font-black border-primary/20 text-primary hover:bg-primary hover:text-white rounded-lg px-2"
+                      onClick={() => setViewingCase(c)}
+                    >
+                      <Eye className="h-3 w-3" /> VER
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 gap-1 text-[9px] font-black border-amber-500/20 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg px-2"
+                      onClick={() => handleEditEntryAttempt(c)}
+                    >
+                      <Edit className="h-3 w-3" /> EDITAR
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -290,22 +341,45 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </DialogContent>
       </Dialog>
 
-      {/* DIÁLOGO DE SEGURIDAD PARA CAMBIO DE ESTADO */}
-      <Dialog open={!!changingStatus} onOpenChange={(open) => !open && handleCancelStatusChange()}>
+      {/* MODAL DE EDICIÓN (Formulario) */}
+      <Dialog open={isEditingFormOpen} onOpenChange={setIsEditingFormOpen}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0">
+          {targetEdit && (
+            <CaseRegistrationForm 
+              initialData={targetEdit} 
+              onCaseAdded={(updatedData) => handleEditSaveAttempt(updatedData)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO ÚNICO DE SEGURIDAD (PASSWORD) */}
+      <Dialog open={!!passwordPurpose} onOpenChange={(open) => !open && handleCancelPassword()}>
         <DialogContent className="sm:max-w-md rounded-3xl">
           <DialogHeader className="text-center sm:text-center">
             <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
               <ShieldCheck className="h-6 w-6 text-destructive" />
             </div>
-            <DialogTitle className="text-xl font-black text-destructive uppercase tracking-tight">Autorización Requerida</DialogTitle>
+            <DialogTitle className="text-xl font-black text-destructive uppercase tracking-tight">
+              {passwordPurpose === 'status' ? 'Autorizar Cambio de Estado' : 
+               passwordPurpose === 'edit-entry' ? 'Autorizar Edición de Datos' : 
+               'Confirmar Guardado de Edición'}
+            </DialogTitle>
             <DialogDescription className="space-y-4 pt-2">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left">
                 <p className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-3 w-3" /> Advertencia Administrativa
                 </p>
                 <p className="text-[11px] text-amber-700 leading-tight font-medium">
-                  Va a modificar el estado del expediente <strong className="text-amber-900">{changingStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{changingStatus?.status}"</strong>. 
-                  Este acto es <span className="underline decoration-2 underline-offset-2">IRREVOCABLE</span> y quedará registrado en su historial oficial.
+                  {passwordPurpose === 'status' && (
+                    <>Va a modificar el estado del expediente <strong className="text-amber-900">{targetStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{targetStatus?.status}"</strong>. Este acto es IRREVOCABLE.</>
+                  )}
+                  {passwordPurpose === 'edit-entry' && (
+                    <>Usted está solicitando acceso al modo de edición del expediente <strong className="text-amber-900">{targetEdit?.caseNumber}</strong>. Toda modificación quedará registrada.</>
+                  )}
+                  {passwordPurpose === 'edit-save' && (
+                    <>Confirmar el guardado final de los cambios realizados en el expediente <strong className="text-amber-900">{pendingEditData?.caseNumber}</strong>. Se requiere firma digital de su cuenta.</>
+                  )}
                 </p>
               </div>
             </DialogDescription>
@@ -321,7 +395,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 className={`h-11 rounded-xl text-center font-bold ${passwordError ? "border-destructive ring-destructive/20" : "border-muted"}`}
                 value={passwordVerify}
                 onChange={(e) => setPasswordVerify(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && confirmStatusChange()}
+                onKeyDown={(e) => e.key === 'Enter' && confirmAction()}
               />
               {passwordError && (
                 <p className="text-[10px] font-bold text-destructive text-center uppercase tracking-widest">Contraseña incorrecta</p>
@@ -331,12 +405,12 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
           <DialogFooter className="flex-col sm:flex-col gap-2">
             <Button 
-              onClick={confirmStatusChange} 
+              onClick={confirmAction} 
               className="w-full bg-primary hover:bg-primary/90 h-11 text-xs font-black uppercase tracking-[0.1em] rounded-xl shadow-lg shadow-primary/20"
             >
-              VALIDAR Y ACTUALIZAR ESTADO
+              VALIDAR Y CONTINUAR
             </Button>
-            <Button variant="ghost" onClick={handleCancelStatusChange} className="w-full text-[10px] font-bold uppercase text-muted-foreground">Cancelar operación</Button>
+            <Button variant="ghost" onClick={handleCancelPassword} className="w-full text-[10px] font-bold uppercase text-muted-foreground">Cancelar operación</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

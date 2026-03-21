@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,13 +16,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
-  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck
+  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck, Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { PoliceCase } from '@/lib/types';
 
 const personSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
@@ -139,9 +140,8 @@ const PersonFormFields = ({
   validateDni: (type: 'victim' | 'aggressor') => void,
   isValidating: boolean
 }) => {
-  // Función para permitir solo números en tiempo real
   const handleNumericInput = (e: React.ChangeEvent<HTMLInputElement>, fieldChange: (val: string) => void) => {
-    const value = e.target.value.replace(/\D/g, ''); // Elimina todo lo que no sea dígito
+    const value = e.target.value.replace(/\D/g, '');
     fieldChange(value);
   };
 
@@ -266,10 +266,18 @@ const PersonFormFields = ({
   );
 };
 
-export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void }) {
+export function CaseRegistrationForm({ 
+  onCaseAdded, 
+  initialData 
+}: { 
+  onCaseAdded: (data?: any) => void,
+  initialData?: PoliceCase
+}) {
   const [step, setStep] = useState(1);
   const [isValidatingDni, setIsValidatingDni] = useState({ victim: false, aggressor: false });
   const { toast } = useToast();
+
+  const isEditing = !!initialData;
 
   const getCurrentTimeWithSeconds = () => {
     const now = new Date();
@@ -278,7 +286,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
   const form = useForm<FormData>({
     resolver: zodResolver(caseSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       caseNumber: '',
       assignedOfficer: '',
       origin: '',
@@ -343,14 +351,22 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
   };
 
   const onSubmit = (values: FormData) => {
-    addCase({
-      ...values,
-      status: 'Pendiente',
-      tags: [values.violenceType, values.riskLevel],
-    });
-    
-    toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado con éxito.` });
-    onCaseAdded();
+    if (isEditing) {
+      // En modo edición, el DashboardView maneja la lógica de guardado final tras pedir contraseña
+      onCaseAdded({
+        ...initialData,
+        ...values,
+        tags: [values.violenceType, values.riskLevel],
+      });
+    } else {
+      addCase({
+        ...values,
+        status: 'Pendiente',
+        tags: [values.violenceType, values.riskLevel],
+      });
+      toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado con éxito.` });
+      onCaseAdded();
+    }
   };
 
   return (
@@ -358,7 +374,8 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
       <CardHeader className="bg-primary py-4">
         <div className="flex justify-between items-center text-white">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <FilePlus className="h-5 w-5" /> Registro de Denuncia Policial
+            {isEditing ? <FileText className="h-5 w-5" /> : <FilePlus className="h-5 w-5" />} 
+            {isEditing ? `Editando Expediente: ${initialData.caseNumber}` : 'Registro de Denuncia Policial'}
           </CardTitle>
           <div className="flex gap-1">
             {[1, 2, 3, 4].map((s) => (
@@ -394,7 +411,7 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   <FormField control={form.control} name="origin" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary/70" /> Origen</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Seleccione Entidad" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {originOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
@@ -420,12 +437,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                     )} />
                   </div>
                 </div>
-                <Alert className="bg-blue-50 border-blue-200">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800 text-xs">
-                    Ingrese el número de expediente oficial y asegúrese de registrar correctamente al personal policial responsable de la intervención.
-                  </AlertDescription>
-                </Alert>
               </div>
             )}
 
@@ -455,13 +466,12 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="flex items-center justify-between border-b pb-2 mb-4">
                   <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
-                  <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">Clasificación según Ley N°30364</Badge>
                 </div>
                 
                 <FormField control={form.control} name="violenceType" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Tipo de Violencia</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Seleccione el tipo de violencia" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {violenceOptions.map(opt => (
@@ -517,28 +527,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                         ))}
                       </RadioGroup>
                     </FormControl>
-                    
-                    <div className="mt-6 min-h-[100px]">
-                      {riskOptions.map((opt) => (
-                        selectedRisk === opt.value && (
-                          <div key={opt.value} className="animate-in fade-in slide-in-from-top-4 zoom-in-95 duration-500">
-                            <Alert className={cn(
-                              "border-2 shadow-lg transition-all duration-500", 
-                              opt.color
-                            )}>
-                              <Shield className="h-6 w-6" />
-                              <AlertTitle className="text-sm font-bold uppercase tracking-widest mb-1">
-                                Estado de Alerta: {opt.label}
-                              </AlertTitle>
-                              <AlertDescription className="text-sm font-medium leading-relaxed">
-                                {opt.desc}
-                              </AlertDescription>
-                            </Alert>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                    <FormMessage />
                   </FormItem>
                 )} />
               </div>
@@ -591,7 +579,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
 
                 <div className="space-y-4">
                   <FormLabel className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Indicaciones de riesgo</FormLabel>
-                  <p className="text-xs text-muted-foreground">Marque los factores de riesgo presentados en el caso:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border p-4 rounded-xl bg-muted/20">
                     {riskFactorOptions.map((option) => (
                       <FormField
@@ -639,7 +626,6 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                         {...field} 
                       />
                     </FormControl>
-                    <FormDescription className="text-[10px]">Cualquier otro detalle que considere necesario para el seguimiento.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -654,7 +640,8 @@ export function CaseRegistrationForm({ onCaseAdded }: { onCaseAdded: () => void 
                   <Button type="button" onClick={nextStep} className="px-8">Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
                 ) : (
                   <Button type="submit" className="bg-primary hover:bg-primary/90 shadow-xl px-10 h-11 transition-all hover:scale-[1.02]">
-                    <Send className="mr-2 h-5 w-5" /> GUARDAR EN SISTEMA
+                    {isEditing ? <Save className="mr-2 h-5 w-5" /> : <Send className="mr-2 h-5 w-5" />}
+                    {isEditing ? 'ACTUALIZAR DATOS' : 'GUARDAR EN SISTEMA'}
                   </Button>
                 )}
               </div>

@@ -41,7 +41,7 @@ let cases: PoliceCase[] = [
   }
 ];
 
-export const getCases = () => [...cases]; // Retornar copia para asegurar inmutabilidad al leer
+export const getCases = () => [...cases];
 
 export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt'>) => {
   const nextId = (cases.length + 1).toString();
@@ -55,6 +55,14 @@ export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'upda
   
   cases = [createdCase, ...cases];
   return createdCase;
+};
+
+export const updateCase = (updatedCase: PoliceCase) => {
+  cases = cases.map((c) => 
+    c.id === updatedCase.id 
+      ? { ...updatedCase, updatedAt: new Date().toISOString() } 
+      : c
+  );
 };
 
 export const updateCaseStatus = (id: string, status: CaseStatus) => {
