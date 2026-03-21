@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -18,6 +19,8 @@ import { CaseRegistrationForm } from './case-registration-form';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Separator } from '@/components/ui/separator';
+import { logAuditEvent } from '@/lib/audit-logger';
+import { maskDni } from '@/lib/crypto';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -56,6 +59,13 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   useEffect(() => {
     setCurrentPage(1);
   }, [cases.length]);
+
+  // Auditoría al ver detalle del expediente
+  useEffect(() => {
+    if (viewingCase && user) {
+      logAuditEvent(user.username, 'VIEW_EXPEDIENT', `Viewed detail of ${viewingCase.caseNumber}`, viewingCase.id);
+    }
+  }, [viewingCase, user]);
 
   useEffect(() => {
     const cleanup = () => {
@@ -112,12 +122,14 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     if (passwordVerify !== currentCred?.password) {
       setPasswordError(true);
       toast({ variant: "destructive", title: "Error de Seguridad", description: "Contraseña incorrecta." });
+      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', `Unauthorized ${passwordPurpose} attempt`);
       return;
     }
 
     if (passwordPurpose === 'status' && targetStatus) {
       updateCaseStatus(targetStatus.id, targetStatus.status);
       toast({ title: "Cambio Autorizado", description: "Estado actualizado." });
+      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Status changed to ${targetStatus.status} for ${targetStatus.caseNumber}`, targetStatus.id);
       onUpdate();
       handleCancelPassword();
     } 
@@ -128,6 +140,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     else if (passwordPurpose === 'edit-save' && pendingEditData) {
       updateCase(pendingEditData);
       toast({ title: "Edición Exitosa", description: "Expediente actualizado." });
+      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Full edit of ${pendingEditData.caseNumber}`, pendingEditData.id);
       setIsEditingFormOpen(false);
       onUpdate();
       handleCancelPassword();
@@ -135,23 +148,22 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   };
 
   const generateIndividualPDF = (c: PoliceCase) => {
+    logAuditEvent(user?.username || 'unknown', 'EXPORT_REPORT', `Individual PDF Export of ${c.caseNumber}`, c.id);
     const doc = new jsPDF({
       orientation: 'p',
       unit: 'mm',
       format: 'a4'
     });
 
-    const primaryColor = [54, 71, 125]; // Navy Blue
-    const accentColor = [38, 98, 216]; // Blue Accent
-    const destructiveColor = [220, 38, 38]; // Red Accent
+    const primaryColor = [54, 71, 125]; 
+    const accentColor = [38, 98, 216]; 
+    const destructiveColor = [220, 38, 38]; 
     const lightGray = [248, 250, 252];
     const textColor = [30, 41, 59];
 
-    // --- Header Section ---
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.rect(0, 0, 210, 40, 'F');
 
-    // Logo Visual (Shield Graphic)
     doc.setDrawColor(255, 255, 255);
     doc.setLineWidth(0.8);
     doc.circle(25, 20, 9, 'S');
@@ -168,7 +180,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     doc.setFontSize(7.5);
     doc.text('SISTEMA DE GESTIÓN DE DENUNCIAS "PAUCARTAMBO SEGURA"', 110, 24, { align: 'center' });
 
-    // Case Number Badge in Header
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(65, 29, 90, 6, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -178,7 +189,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
     let y = 48;
 
-    // --- Helper Functions ---
     const drawSectionHeader = (title: string, color: number[], icon: string) => {
       doc.setFillColor(color[0], color[1], color[2]);
       doc.roundedRect(14, y, 182, 5, 1, 1, 'F');
@@ -201,7 +211,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       y = (doc as any).lastAutoTable.finalY + 3;
     };
 
-    // 1. Datos Generales
     drawSectionHeader('Información General del Registro', primaryColor, '📋');
     drawDataTable([
       ['OFICIAL RESPONSABLE', c.assignedOfficer],
@@ -211,7 +220,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       ['ESTADO ACTUAL', c.status.toUpperCase()]
     ]);
 
-    // 2. Datos de la Víctima
     drawSectionHeader('Identificación de la Víctima', accentColor, '👤');
     drawDataTable([
       ['NOMBRES COMPLETOS', c.victim.name],
@@ -221,7 +229,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       ['REFERENCIAS', c.victim.reference || 'NO REGISTRA']
     ]);
 
-    // 3. Datos del Agresor
     drawSectionHeader('Datos del Presunto Agresor', destructiveColor, '⚠️');
     drawDataTable([
       ['NOMBRES COMPLETOS', c.aggressor.name],
@@ -230,7 +237,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       ['DIRECCIÓN CONOCIDA', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`]
     ]);
 
-    // 4. Detalles del Incidente
     drawSectionHeader('Clasificación y Detalles del Suceso', primaryColor, '⚖️');
     drawDataTable([
       ['TIPO DE VIOLENCIA', c.violenceType],
@@ -240,7 +246,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       ['HORA APROXIMADA', c.incidentTime]
     ]);
 
-    // --- Description Text Box ---
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
     doc.roundedRect(14, y, 182, 25, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -255,30 +260,25 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     doc.text(splitDescription, 18, y + 9);
     y += 30;
 
-    // --- Footer & Signatures ---
     const pageHeight = doc.internal.pageSize.height;
     
-    // Digital Stamp / QR Box (Modern detail)
     doc.setDrawColor(220, 220, 220);
-    doc.rect(14, pageHeight - 50, 25, 25);
+    doc.rect(14, pageHeight - 45, 25, 20);
     doc.setFontSize(5.5);
     doc.setTextColor(180, 180, 180);
-    doc.text('SELLO DIGITAL\nADMINISTRATIVO', 26.5, pageHeight - 38, { align: 'center' });
+    doc.text('SELLO DIGITAL\nADMINISTRATIVO', 26.5, pageHeight - 35, { align: 'center' });
 
-    // Signature Line
     doc.setDrawColor(100, 100, 100);
     doc.setLineWidth(0.4);
     doc.line(70, pageHeight - 35, 140, pageHeight - 35);
     doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 30, { align: 'center' });
+    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 31, { align: 'center' });
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text(c.assignedOfficer, 105, pageHeight - 26, { align: 'center' });
-    doc.text('COMISARÍA PNP PAUCARTAMBO', 105, pageHeight - 22, { align: 'center' });
+    doc.text(c.assignedOfficer, 105, pageHeight - 27, { align: 'center' });
 
-    // Final Branding Footer
     doc.setFillColor(241, 245, 249);
     doc.rect(0, pageHeight - 10, 210, 10, 'F');
     doc.setTextColor(148, 163, 184);
@@ -448,7 +448,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em] border-b pb-2"><User className="h-4 w-4" /> Datos de la Víctima</h4>
                   <div className="space-y-2 pt-1">
                     <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.victim.name}</p>
-                    <p className="text-xs"><strong>DNI:</strong> {viewingCase.victim.dni}</p>
+                    <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.victim.dni)}</p>
                     <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.victim.phone}</p>
                     <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
                     <p className="text-xs"><strong>REFERENCIA:</strong> {viewingCase.victim.reference || 'Ninguna'}</p>
@@ -458,7 +458,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   <h4 className="text-[10px] font-black text-destructive flex items-center gap-2 uppercase tracking-[0.2em] border-b border-destructive/10 pb-2"><User className="h-4 w-4" /> Datos del Agresor</h4>
                   <div className="space-y-2 pt-1">
                     <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.aggressor.name}</p>
-                    <p className="text-xs"><strong>DNI:</strong> {viewingCase.aggressor.dni}</p>
+                    <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.aggressor.dni)}</p>
                     <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.aggressor.phone}</p>
                     <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
                   </div>
@@ -531,9 +531,9 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
             </DialogTitle>
             <DialogDescription asChild className="space-y-4 pt-2">
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left">
-                <p className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
+                <div className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-3 w-3" /> Advertencia Administrativa
-                </p>
+                </div>
                 <p className="text-[11px] text-amber-700 leading-tight font-medium">
                   {passwordPurpose === 'status' && (
                     <>Va a modificar el estado del expediente <strong className="text-amber-900">{targetStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{targetStatus?.status}"</strong>. Este acto es IRREVOCABLE.</>

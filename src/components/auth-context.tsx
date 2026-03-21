@@ -1,7 +1,9 @@
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
+import { logAuditEvent } from '@/lib/audit-logger';
 
 interface AuthContextType {
   user: User | null;
@@ -13,7 +15,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Credenciales por defecto iniciales
 const DEFAULT_CREDENTIALS = [
   { username: 'admin1', password: 'admin1' },
   { username: 'admin2', password: 'admin2' }
@@ -24,15 +25,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Inicializar credenciales si no existen
     const existingCreds = localStorage.getItem('ps_credentials');
     if (!existingCreds) {
       localStorage.setItem('ps_credentials', JSON.stringify(DEFAULT_CREDENTIALS));
     }
 
     const storedUser = localStorage.getItem('ps_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const sessionFingerprint = localStorage.getItem('ps_session_fingerprint');
+    
+    // Validación de integridad de sesión (Defensa contra Session Hijacking)
+    if (storedUser && sessionFingerprint) {
+      const currentFingerprint = navigator.userAgent;
+      if (currentFingerprint !== sessionFingerprint) {
+        logout(); // Invalidar si el User-Agent cambió
+      } else {
+        setUser(JSON.parse(storedUser));
+      }
     }
     setIsLoading(false);
   }, []);
@@ -47,8 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser: User = { username: found.username, role: 'admin' };
       setUser(newUser);
       localStorage.setItem('ps_user', JSON.stringify(newUser));
+      // Guardar huella del dispositivo para validación continua
+      localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
+      
+      logAuditEvent(newUser.username, 'LOGIN', 'Successful authentication');
       return true;
     }
+    
+    logAuditEvent(username, 'SECURITY_VIOLATION', 'Failed login attempt');
     return false;
   };
 
@@ -58,22 +72,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const credsStr = localStorage.getItem('ps_credentials');
     let credentials = credsStr ? JSON.parse(credsStr) : [...DEFAULT_CREDENTIALS];
 
-    // Actualizar la entrada del usuario actual
     credentials = credentials.map((c: any) => 
       c.username === user.username ? { username: newUsername, password: newPassword } : c
     );
 
     localStorage.setItem('ps_credentials', JSON.stringify(credentials));
     
-    // Actualizar sesión actual
     const updatedUser: User = { ...user, username: newUsername };
     setUser(updatedUser);
     localStorage.setItem('ps_user', JSON.stringify(updatedUser));
+    
+    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Username changed to ${newUsername}`);
   };
 
   const logout = () => {
+    if (user) {
+      logAuditEvent(user.username, 'LOGOUT', 'Manual session termination');
+    }
     setUser(null);
     localStorage.removeItem('ps_user');
+    localStorage.removeItem('ps_session_fingerprint');
   };
 
   return (

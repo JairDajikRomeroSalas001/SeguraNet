@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -24,6 +25,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { PoliceCase } from '@/lib/types';
+import { logAuditEvent } from '@/lib/audit-logger';
+import { useAuth } from '@/components/auth-context';
+import { generateDataHash } from '@/lib/crypto';
 
 const personSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
@@ -276,6 +280,7 @@ export function CaseRegistrationForm({
   const [step, setStep] = useState(1);
   const [isValidatingDni, setIsValidatingDni] = useState({ victim: false, aggressor: false });
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const isEditing = !!initialData;
 
@@ -304,8 +309,6 @@ export function CaseRegistrationForm({
       additionalObservations: '',
     },
   });
-
-  const selectedRisk = form.watch('riskLevel');
 
   const validateDni = async (type: 'victim' | 'aggressor') => {
     const dni = form.getValues(`${type}.dni`);
@@ -350,13 +353,16 @@ export function CaseRegistrationForm({
     }
   };
 
-  const onSubmit = (values: FormData) => {
+  const onSubmit = async (values: FormData) => {
+    // Generar hash de integridad (No Repudio)
+    const integrityHash = await generateDataHash(values);
+    
     if (isEditing) {
-      // En modo edición, el DashboardView maneja la lógica de guardado final tras pedir contraseña
       onCaseAdded({
         ...initialData,
         ...values,
         tags: [values.violenceType, values.riskLevel],
+        integrityHash, // Adjuntar firma de integridad
       });
     } else {
       addCase({
@@ -364,6 +370,9 @@ export function CaseRegistrationForm({
         status: 'Pendiente',
         tags: [values.violenceType, values.riskLevel],
       });
+      
+      logAuditEvent(user?.username || 'unknown', 'CREATE_EXPEDIENT', `Registered new expedient: ${values.caseNumber}`);
+      
       toast({ title: "Expediente Guardado", description: `Expediente ${values.caseNumber} registrado con éxito.` });
       onCaseAdded();
     }

@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -31,6 +32,8 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useSessionTimeout } from '@/hooks/use-session-timeout';
+import { logAuditEvent } from '@/lib/audit-logger';
 
 const XIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
@@ -58,6 +61,9 @@ export function DashboardView() {
     startDate: '',
     endDate: '',
   });
+
+  // Activar cierre de sesión por inactividad (5 minutos conforme a normativa)
+  useSessionTimeout();
 
   const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
 
@@ -121,6 +127,8 @@ export function DashboardView() {
       return;
     }
 
+    logAuditEvent(user?.username || 'unknown', 'EXPORT_REPORT', `CSV Export of ${filteredCases.length} records`);
+
     const headers = ["EXPEDIENTE", "OFICIAL", "VICTIMA", "AGRESOR", "TIPO_VIOLENCIA", "RIESGO", "ESTADO", "FECHA"];
     const rows = filteredCases.map(c => [
       `"${c.caseNumber}"`,
@@ -149,6 +157,8 @@ export function DashboardView() {
       toast({ variant: "destructive", title: "Sin datos", description: "No hay denuncias para exportar." });
       return;
     }
+
+    logAuditEvent(user?.username || 'unknown', 'EXPORT_REPORT', `PDF Export of ${filteredCases.length} records`);
 
     const doc = new jsPDF('landscape');
     doc.setFontSize(18);
