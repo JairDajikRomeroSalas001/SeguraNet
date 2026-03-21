@@ -5,18 +5,18 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Save } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Printer, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateCaseStatus, updateCase } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useAuth } from '@/components/auth-context';
 import { CaseRegistrationForm } from './case-registration-form';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -42,7 +42,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
   
-  // Estados para manejo de password y propósitos
   const [passwordPurpose, setPasswordPurpose] = useState<PasswordPurpose | null>(null);
   const [targetStatus, setTargetStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
   const [targetEdit, setTargetEdit] = useState<PoliceCase | null>(null);
@@ -73,7 +72,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedCases = cases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Manejadores para Cambio de Estado
   const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
     setTargetStatus({ id: caseId, caseNumber, status: newStatus });
     setPasswordPurpose('status');
@@ -81,7 +79,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     setPasswordError(false);
   };
 
-  // Manejadores para Edición
   const handleEditEntryAttempt = (pCase: PoliceCase) => {
     setTargetEdit(pCase);
     setPasswordPurpose('edit-entry');
@@ -107,19 +104,13 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   const confirmAction = () => {
     if (!passwordPurpose) return;
-
-    // Validación simulada con localStorage
     const credsStr = localStorage.getItem('ps_credentials');
     const credentials = credsStr ? JSON.parse(credsStr) : [];
     const currentCred = credentials.find((c: any) => c.username === user?.username);
 
     if (passwordVerify !== currentCred?.password) {
       setPasswordError(true);
-      toast({
-        variant: "destructive",
-        title: "Error de Seguridad",
-        description: "La contraseña ingresada es incorrecta."
-      });
+      toast({ variant: "destructive", title: "Error de Seguridad", description: "Contraseña incorrecta." });
       return;
     }
 
@@ -131,17 +122,99 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     } 
     else if (passwordPurpose === 'edit-entry' && targetEdit) {
       setIsEditingFormOpen(true);
-      const dataToEdit = {...targetEdit};
-      setTargetEdit(dataToEdit);
-      setPasswordPurpose(null); // Cerrar diálogo de password para mostrar form
+      setPasswordPurpose(null);
     }
     else if (passwordPurpose === 'edit-save' && pendingEditData) {
       updateCase(pendingEditData);
-      toast({ title: "Edición Exitosa", description: "Expediente actualizado correctamente." });
+      toast({ title: "Edición Exitosa", description: "Expediente actualizado." });
       setIsEditingFormOpen(false);
       onUpdate();
       handleCancelPassword();
     }
+  };
+
+  const generateIndividualPDF = (c: PoliceCase) => {
+    const doc = new jsPDF();
+    const primaryColor = [54, 71, 125];
+    
+    // Header
+    doc.setFillColor(54, 71, 125);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('POLICÍA NACIONAL DEL PERÚ', 105, 15, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text('COMISARÍA PNP PAUCARTAMBO - CUSCO', 105, 25, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`EXPEDIENTE OFICIAL: ${c.caseNumber}`, 105, 33, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    let y = 50;
+
+    // Table Style Sections
+    const section = (title: string, data: any[][]) => {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(title, 14, y);
+      y += 5;
+      (doc as any).autoTable({
+        startY: y,
+        body: data,
+        theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: 'bold', width: 40 } },
+        margin: { left: 14 }
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+    };
+
+    section('DATOS GENERALES DEL REGISTRO', [
+      ['N° EXPEDIENTE', c.caseNumber],
+      ['FECHA DE REGISTRO', format(new Date(c.entryDate), 'dd/MM/yyyy')],
+      ['HORA DE REGISTRO', c.entryTime],
+      ['OFICIAL ASIGNADO', c.assignedOfficer],
+      ['ORIGEN DENUNCIA', c.origin],
+      ['ESTADO ACTUAL', c.status.toUpperCase()]
+    ]);
+
+    section('DATOS DE LA VÍCTIMA', [
+      ['NOMBRE COMPLETO', c.victim.name],
+      ['DNI', c.victim.dni],
+      ['TELÉFONO', c.victim.phone],
+      ['DIRECCIÓN', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`],
+      ['REFERENCIA', c.victim.reference || 'N/A']
+    ]);
+
+    section('DATOS DEL AGRESOR', [
+      ['NOMBRE COMPLETO', c.aggressor.name],
+      ['DNI', c.aggressor.dni],
+      ['TELÉFONO', c.aggressor.phone],
+      ['DIRECCIÓN', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`]
+    ]);
+
+    section('CLASIFICACIÓN Y HECHOS', [
+      ['TIPO DE VIOLENCIA', c.violenceType],
+      ['NIVEL DE RIESGO', c.riskLevel],
+      ['LUGAR DEL SUCESO', c.incidentLocation],
+      ['FECHA DEL HECHO', format(new Date(c.incidentDate), 'dd/MM/yyyy')],
+      ['HORA DEL HECHO', c.incidentTime],
+      ['DESCRIPCIÓN', c.incidentDescription]
+    ]);
+
+    if (c.additionalObservations) {
+      section('OBSERVACIONES ADICIONALES', [[ 'DETALLE', c.additionalObservations ]]);
+    }
+
+    // Footer Signature
+    const pageHeight = doc.internal.pageSize.height;
+    doc.line(60, pageHeight - 40, 150, pageHeight - 40);
+    doc.setFontSize(8);
+    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 35, { align: 'center' });
+    doc.text(`Generado por Paucartambo Segura el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 105, pageHeight - 15, { align: 'center' });
+
+    doc.save(`EXPEDIENTE_${c.caseNumber}.pdf`);
   };
 
   if (cases.length === 0) {
@@ -232,7 +305,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </Table>
       </div>
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4 bg-white rounded-xl border border-primary/10 shadow-sm">
           <p className="text-[11px] text-muted-foreground font-medium">
@@ -274,14 +346,25 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </div>
       )}
 
-      {/* DIÁLOGO DE DETALLE COMPLETO */}
       <Dialog open={!!viewingCase} onOpenChange={(open) => !open && setViewingCase(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-primary flex items-center gap-2 font-black text-xl">
-              <FileText className="h-6 w-6" /> EXPEDIENTE: {viewingCase?.caseNumber}
-            </DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Registro Oficial • Comisaría de Paucartambo</DialogDescription>
+          <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
+            <div className="space-y-1">
+              <DialogTitle className="text-primary flex items-center gap-2 font-black text-xl">
+                <FileText className="h-6 w-6" /> EXPEDIENTE: {viewingCase?.caseNumber}
+              </DialogTitle>
+              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Registro Oficial • Comisaría de Paucartambo</DialogDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-9 gap-2 text-xs font-black border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                onClick={() => viewingCase && generateIndividualPDF(viewingCase)}
+              >
+                <Printer className="h-4 w-4" /> IMPRIMIR PDF
+              </Button>
+            </div>
           </DialogHeader>
 
           {viewingCase && (
@@ -294,6 +377,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     <p className="text-xs"><strong>DNI:</strong> {viewingCase.victim.dni}</p>
                     <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.victim.phone}</p>
                     <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
+                    <p className="text-xs"><strong>REFERENCIA:</strong> {viewingCase.victim.reference || 'Ninguna'}</p>
                   </div>
                 </div>
                 <div className="space-y-3 p-5 bg-destructive/5 rounded-2xl border border-destructive/10 shadow-sm">
@@ -319,29 +403,36 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   <p className="text-xs font-black text-primary">{viewingCase.violenceType}</p>
                 </div>
                 <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
-                  <History className="h-5 w-5 text-slate-500 mb-2" />
-                  <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase tracking-widest">Última Actualización</h4>
-                  <p className="text-xs font-mono font-bold text-primary">{format(new Date(viewingCase.updatedAt), "dd/MM/yyyy HH:mm:ss")}</p>
+                  <Badge variant="outline" className={`text-[10px] font-black mb-1 ${riskColors[viewingCase.riskLevel]}`}>
+                    {viewingCase.riskLevel}
+                  </Badge>
+                  <h4 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Nivel de Riesgo</h4>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em]">
-                  <FileText className="h-4 w-4" /> Descripción de los Hechos
+              <div className="space-y-3 p-5 bg-slate-50 rounded-2xl border">
+                <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em] mb-2">
+                  <History className="h-4 w-4" /> Información del Incidente
                 </h4>
-                <div className="bg-muted/10 p-5 rounded-2xl border italic text-sm leading-relaxed text-slate-700">
-                  {viewingCase.incidentDescription}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs">
+                  <p><strong>FECHA SUCESO:</strong> {format(new Date(viewingCase.incidentDate), 'dd/MM/yyyy')}</p>
+                  <p><strong>HORA APROX:</strong> {viewingCase.incidentTime}</p>
+                  <p className="md:col-span-2"><strong>LUGAR:</strong> {viewingCase.incidentLocation}</p>
+                </div>
+                <Separator className="my-3 opacity-50" />
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Descripción de los hechos:</p>
+                  <p className="text-sm italic leading-relaxed text-slate-700">{viewingCase.incidentDescription}</p>
                 </div>
               </div>
             </div>
           )}
           <DialogFooter className="border-t pt-4">
-            <Button variant="ghost" onClick={() => setViewingCase(null)} className="font-bold text-xs uppercase">Cerrar Expediente</Button>
+            <Button variant="ghost" onClick={() => setViewingCase(null)} className="font-bold text-xs uppercase">Cerrar Detalle</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DE EDICIÓN (Formulario) */}
       <Dialog open={isEditingFormOpen} onOpenChange={setIsEditingFormOpen}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0">
           {targetEdit && (
@@ -353,7 +444,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         </DialogContent>
       </Dialog>
 
-      {/* DIÁLOGO ÚNICO DE SEGURIDAD (PASSWORD) */}
       <Dialog open={!!passwordPurpose} onOpenChange={(open) => !open && handleCancelPassword()}>
         <DialogContent className="sm:max-w-md rounded-3xl">
           <DialogHeader className="text-center sm:text-center">
@@ -417,3 +507,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     </div>
   );
 }
+
+const Separator = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`h-[1px] w-full bg-border ${className}`} {...props} />
+);
