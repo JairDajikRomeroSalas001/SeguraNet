@@ -74,7 +74,10 @@ export function DashboardView() {
       const q = filters.query.toLowerCase();
       result = result.filter(c => 
         c.caseNumber.toLowerCase().includes(q) || 
-        c.victim.name.toLowerCase().includes(q)
+        c.victim.name.toLowerCase().includes(q) ||
+        c.aggressor.name.toLowerCase().includes(q) ||
+        c.victim.dni.toLowerCase().includes(q) ||
+        c.aggressor.dni.toLowerCase().includes(q)
       );
     }
 

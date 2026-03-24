@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -64,7 +65,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por número de expediente o nombre de la víctima..."
+              placeholder="Buscar por expediente, nombres o DNI (víctima/agresor)..."
               className="pl-10 bg-white"
               value={filters.query}
               onChange={(e) => setFilters(f => ({ ...f, query: e.target.value }))}
