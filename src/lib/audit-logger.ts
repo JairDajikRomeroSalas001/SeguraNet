@@ -14,7 +14,8 @@ export type AuditAction =
   | 'SECURITY_VIOLATION'
   | 'CREATE_USER'
   | 'DELETE_USER'
-  | 'UPDATE_CREDENTIALS';
+  | 'UPDATE_CREDENTIALS'
+  | 'SYSTEM_BACKUP';
 
 interface AuditEntry {
   timestamp: string;

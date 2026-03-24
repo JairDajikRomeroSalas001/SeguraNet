@@ -7,8 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Save, AlertTriangle, ShieldCheck, Key } from 'lucide-react';
+import { User, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getCases } from '@/lib/store';
+import { logAuditEvent } from '@/lib/audit-logger';
+import { format } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export function SettingsView() {
   const { user, updateCredentials } = useAuth();
@@ -20,10 +24,14 @@ export function SettingsView() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Estados para Backup
+  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupError, setBackupError] = useState(false);
+
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validaciones de seguridad simuladas
     const credsStr = localStorage.getItem('ps_credentials');
     const credentials = credsStr ? JSON.parse(credsStr) : [];
     const currentCred = credentials.find((c: any) => c.username === user?.username);
@@ -57,7 +65,6 @@ export function SettingsView() {
 
     setIsUpdating(true);
     
-    // Simular guardado
     setTimeout(() => {
       updateCredentials(newUsername, newPassword);
       setIsUpdating(false);
@@ -72,105 +79,220 @@ export function SettingsView() {
     }, 1000);
   };
 
+  const handleBackupRequest = () => {
+    setIsBackupDialogOpen(true);
+    setBackupPassword('');
+    setBackupError(false);
+  };
+
+  const confirmBackup = () => {
+    const credsStr = localStorage.getItem('ps_credentials');
+    const credentials = credsStr ? JSON.parse(credsStr) : [];
+    const currentCred = credentials.find((c: any) => c.username === user?.username);
+
+    if (backupPassword !== currentCred?.password) {
+      setBackupError(true);
+      toast({
+        variant: "destructive",
+        title: "Autorización Denegada",
+        description: "Contraseña de administrador incorrecta."
+      });
+      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', 'Failed attempt to download system backup');
+      return;
+    }
+
+    // Proceso de Respaldo
+    try {
+      const cases = getCases(true); // Incluir eliminados lógicamente
+      const auditLogs = JSON.parse(localStorage.getItem('ps_audit_logs') || '[]');
+      
+      const backupData = {
+        sistema: "Paucartambo Segura v2.0",
+        fecha_respaldo: new Date().toISOString(),
+        oficial_responsable: user?.username,
+        base_de_datos: {
+          expedientes: cases,
+          logs_auditoria: auditLogs
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `RESPALDO_SISTEMA_${format(new Date(), 'yyyyMMdd_HHmm')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      logAuditEvent(user?.username || 'unknown', 'SYSTEM_BACKUP', 'Full database and audit logs backup generated');
+      
+      toast({
+        title: "Respaldo Generado",
+        description: "La copia de seguridad se ha descargado correctamente."
+      });
+      
+      setIsBackupDialogOpen(false);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error de Sistema",
+        description: "No se pudo generar el respaldo de datos."
+      });
+    }
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Card className="shadow-xl border-primary/10 overflow-hidden">
+    <div className="max-w-3xl mx-auto space-y-8 pb-12">
+      {/* CARD DE SEGURIDAD */}
+      <Card className="shadow-xl border-primary/10 overflow-hidden rounded-2xl">
         <CardHeader className="bg-primary text-white py-6">
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" /> Configuración de Seguridad
+          <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
+            <Key className="h-5 w-5" /> Seguridad de Cuenta
           </CardTitle>
-          <CardDescription className="text-white/80">
+          <CardDescription className="text-white/80 font-medium">
             Actualice sus credenciales oficiales de acceso al sistema.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-8">
           <form onSubmit={handleUpdate} className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-username" className="text-xs font-bold uppercase text-muted-foreground">Nuevo Nombre de Usuario</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                    <Input 
-                      id="new-username"
-                      value={newUsername}
-                      onChange={(e) => setNewUsername(e.target.value)}
-                      className="pl-10"
-                      placeholder="Identificador de Oficial"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="current-pass" className="text-xs font-bold uppercase text-muted-foreground">Contraseña Actual</Label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                    <Input 
-                      id="current-pass"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="pl-10"
-                      placeholder="Verifique identidad"
-                    />
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nuevo Usuario</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <Input 
+                    id="new-username"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="pl-10 h-11 rounded-xl font-bold"
+                  />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-pass" className="text-xs font-bold uppercase text-muted-foreground">Nueva Contraseña</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                    <Input 
-                      id="new-pass"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-10"
-                      placeholder="Mínimo 4 caracteres"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="current-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña Actual</Label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <Input 
+                    id="current-pass"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="pl-10 h-11 rounded-xl font-bold"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-pass" className="text-xs font-bold uppercase text-muted-foreground">Confirmar Nueva Contraseña</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                    <Input 
-                      id="confirm-pass"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10"
-                      placeholder="Repita contraseña"
-                    />
-                  </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nueva Contraseña</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <Input 
+                    id="new-pass"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="pl-10 h-11 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Confirmar Nueva Contraseña</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <Input 
+                    id="confirm-pass"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 h-11 rounded-xl font-bold"
+                  />
                 </div>
               </div>
             </div>
 
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-amber-800 text-xs font-bold uppercase">Advertencia de Seguridad</AlertTitle>
-              <AlertDescription className="text-amber-700 text-[11px] leading-tight mt-1">
-                Al cambiar sus credenciales, deberá utilizar los nuevos datos para su próximo inicio de sesión. No comparta estos datos con personal no autorizado.
-              </AlertDescription>
-            </Alert>
-
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 h-12 font-bold uppercase tracking-widest"
+              className="w-full bg-primary hover:bg-primary/90 h-12 font-black text-xs uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-primary/20"
               disabled={isUpdating}
             >
               {isUpdating ? 'PROCESANDO CAMBIO...' : 'ACTUALIZAR CREDENCIALES OFICIALES'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="bg-muted/30 py-4 flex justify-center border-t">
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
-            Ministerio del Interior • PNP Paucartambo
+      </Card>
+
+      {/* CARD DE RESPALDO (CISO STANDARDS) */}
+      <Card className="shadow-xl border-amber-200 overflow-hidden rounded-2xl bg-amber-50/30">
+        <CardHeader className="bg-amber-600 text-white py-6">
+          <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
+            <Database className="h-5 w-5" /> Mantenimiento de Datos
+          </CardTitle>
+          <CardDescription className="text-white/80 font-medium">
+            Respaldo y cumplimiento de auditoría (Ley 29733).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-8 space-y-6">
+          <div className="flex flex-col md:flex-row gap-6 items-center">
+            <div className="p-4 bg-amber-100 rounded-2xl border border-amber-200 flex-1">
+              <div className="flex items-center gap-2 mb-2 text-amber-800">
+                <ShieldAlert className="h-4 w-4" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Protocolo de Respaldo</span>
+              </div>
+              <p className="text-[11px] text-amber-700 leading-tight font-medium">
+                Esta opción genera un archivo JSON con **toda la información** del sistema, incluyendo expedientes eliminados y logs de auditoría. Este archivo es vital para inspecciones de la PCM o fiscalización judicial.
+              </p>
+            </div>
+            <Button 
+              onClick={handleBackupRequest}
+              className="bg-amber-600 hover:bg-amber-700 h-14 px-8 font-black text-xs uppercase tracking-widest gap-2 rounded-xl shadow-lg shadow-amber-600/20 w-full md:w-auto"
+            >
+              <Download className="h-5 w-5" /> GENERAR COPIA DE SEGURIDAD
+            </Button>
+          </div>
+        </CardContent>
+        <CardFooter className="bg-amber-100/50 py-4 flex justify-center border-t border-amber-200">
+          <p className="text-[9px] text-amber-800 uppercase font-black tracking-widest flex items-center gap-2">
+            <ShieldCheck className="h-3 w-3" /> Respaldo de Integridad Estándar SGTD-PCM
           </p>
         </CardFooter>
       </Card>
+
+      {/* DIALOGO DE SEGURIDAD PARA BACKUP */}
+      <Dialog open={isBackupDialogOpen} onOpenChange={setIsBackupDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <ShieldCheck className="h-6 w-6 text-amber-600" />
+            </div>
+            <DialogTitle className="text-xl font-black text-amber-800 uppercase">Autorizar Respaldo</DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase pt-2">
+              Confirme su identidad para exportar la base de datos completa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña de Administrador</Label>
+              <Input 
+                type="password"
+                placeholder="Ingrese su contraseña"
+                className={`h-11 rounded-xl text-center font-bold ${backupError ? "border-destructive" : ""}`}
+                value={backupPassword}
+                onChange={(e) => setBackupPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmBackup()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-col gap-2">
+            <Button 
+              onClick={confirmBackup} 
+              className="w-full bg-amber-600 hover:bg-amber-700 h-11 text-xs font-black uppercase rounded-xl"
+            >
+              VALIDAR Y DESCARGAR
+            </Button>
+            <Button variant="ghost" onClick={() => setIsBackupDialogOpen(false)} className="text-[10px] font-bold uppercase">Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
