@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Servicio de Logging de Auditoría para cumplimiento de SGTD-PCM.
  * Garantiza la trazabilidad y el no repudio de las acciones del personal policial.
@@ -10,6 +9,7 @@ export type AuditAction =
   | 'VIEW_EXPEDIENT' 
   | 'CREATE_EXPEDIENT' 
   | 'UPDATE_EXPEDIENT' 
+  | 'DELETE_EXPEDIENT'
   | 'EXPORT_REPORT' 
   | 'SECURITY_VIOLATION'
   | 'CREATE_USER'

@@ -35,6 +35,8 @@ export interface PoliceCase {
   // Metadatos
   status: CaseStatus;
   tags: string[];
+  isDeleted?: boolean;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

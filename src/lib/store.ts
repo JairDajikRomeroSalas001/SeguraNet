@@ -41,7 +41,8 @@ let cases: PoliceCase[] = [
   }
 ];
 
-export const getCases = () => [...cases];
+export const getCases = (includeDeleted = false) => 
+  includeDeleted ? [...cases] : cases.filter(c => !c.isDeleted);
 
 export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt'>) => {
   const nextId = (cases.length + 1).toString();
@@ -68,5 +69,11 @@ export const updateCase = (updatedCase: PoliceCase) => {
 export const updateCaseStatus = (id: string, status: CaseStatus) => {
   cases = cases.map((c) => 
     c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c
+  );
+};
+
+export const deleteCase = (id: string) => {
+  cases = cases.map((c) => 
+    c.id === id ? { ...c, isDeleted: true, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : c
   );
 };

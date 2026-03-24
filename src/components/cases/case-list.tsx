@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -6,12 +5,12 @@ import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Printer, Download } from 'lucide-react';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Printer, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateCaseStatus, updateCase } from '@/lib/store';
+import { updateCaseStatus, updateCase, deleteCase } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth-context';
@@ -39,7 +38,7 @@ const riskColors: Record<string, string> = {
 
 const ITEMS_PER_PAGE = 10;
 
-type PasswordPurpose = 'status' | 'edit-entry' | 'edit-save';
+type PasswordPurpose = 'status' | 'edit-entry' | 'edit-save' | 'delete';
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: () => void }) {
   const { user } = useAuth();
@@ -49,6 +48,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const [passwordPurpose, setPasswordPurpose] = useState<PasswordPurpose | null>(null);
   const [targetStatus, setTargetStatus] = useState<{ id: string, caseNumber: string, status: CaseStatus } | null>(null);
   const [targetEdit, setTargetEdit] = useState<PoliceCase | null>(null);
+  const [targetDelete, setTargetDelete] = useState<{ id: string, caseNumber: string } | null>(null);
   const [pendingEditData, setPendingEditData] = useState<PoliceCase | null>(null);
   
   const [isEditingFormOpen, setIsEditingFormOpen] = useState(false);
@@ -60,24 +60,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     setCurrentPage(1);
   }, [cases.length]);
 
-  // Auditoría al ver detalle del expediente
   useEffect(() => {
     if (viewingCase && user) {
       logAuditEvent(user.username, 'VIEW_EXPEDIENT', `Viewed detail of ${viewingCase.caseNumber}`, viewingCase.id);
     }
   }, [viewingCase, user]);
-
-  useEffect(() => {
-    const cleanup = () => {
-      document.body.style.pointerEvents = 'auto';
-      document.body.style.overflow = 'auto';
-    };
-    
-    if (!viewingCase && !passwordPurpose && !isEditingFormOpen) {
-      const timer = setTimeout(cleanup, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [viewingCase, passwordPurpose, isEditingFormOpen]);
 
   const totalPages = Math.ceil(cases.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -104,10 +91,18 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     setPasswordError(false);
   };
 
+  const handleDeleteAttempt = (caseId: string, caseNumber: string) => {
+    setTargetDelete({ id: caseId, caseNumber });
+    setPasswordPurpose('delete');
+    setPasswordVerify('');
+    setPasswordError(false);
+  };
+
   const handleCancelPassword = () => {
     setPasswordPurpose(null);
     setTargetStatus(null);
     setTargetEdit(null);
+    setTargetDelete(null);
     setPendingEditData(null);
     setPasswordVerify('');
     setPasswordError(false);
@@ -142,6 +137,13 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       toast({ title: "Edición Exitosa", description: "Expediente actualizado." });
       logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Full edit of ${pendingEditData.caseNumber}`, pendingEditData.id);
       setIsEditingFormOpen(false);
+      onUpdate();
+      handleCancelPassword();
+    }
+    else if (passwordPurpose === 'delete' && targetDelete) {
+      deleteCase(targetDelete.id);
+      toast({ title: "Expediente Eliminado", description: `El expediente ${targetDelete.caseNumber} ha sido removido de la vista operativa.` });
+      logAuditEvent(user?.username || 'unknown', 'DELETE_EXPEDIENT', `Logical deletion of ${targetDelete.caseNumber}`, targetDelete.id);
       onUpdate();
       handleCancelPassword();
     }
@@ -371,6 +373,14 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     >
                       <Edit className="h-3 w-3" /> EDITAR
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 gap-1 text-[9px] font-black border-destructive/20 text-destructive hover:bg-destructive hover:text-white rounded-lg px-2"
+                      onClick={() => handleDeleteAttempt(c.id, c.caseNumber)}
+                    >
+                      <Trash2 className="h-3 w-3" /> BORRAR
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -527,6 +537,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
             <DialogTitle className="text-xl font-black text-destructive uppercase tracking-tight">
               {passwordPurpose === 'status' ? 'Autorizar Cambio de Estado' : 
                passwordPurpose === 'edit-entry' ? 'Autorizar Edición de Datos' : 
+               passwordPurpose === 'delete' ? 'Autorizar Eliminación de Registro' :
                'Confirmar Guardado de Edición'}
             </DialogTitle>
             <DialogDescription asChild className="space-y-4 pt-2">
@@ -534,7 +545,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 <div className="text-[10px] font-black text-amber-800 uppercase flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-3 w-3" /> Advertencia Administrativa
                 </div>
-                <p className="text-[11px] text-amber-700 leading-tight font-medium">
+                <div className="text-[11px] text-amber-700 leading-tight font-medium">
                   {passwordPurpose === 'status' && (
                     <>Va a modificar el estado del expediente <strong className="text-amber-900">{targetStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{targetStatus?.status}"</strong>. Este acto es IRREVOCABLE.</>
                   )}
@@ -544,7 +555,10 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   {passwordPurpose === 'edit-save' && (
                     <>Confirmar el guardado final de los cambios realizados en el expediente <strong className="text-amber-900">{pendingEditData?.caseNumber}</strong>. Se requiere firma digital de su cuenta.</>
                   )}
-                </p>
+                  {passwordPurpose === 'delete' && (
+                    <>Está a punto de ELIMINAR el expediente <strong className="text-amber-900">{targetDelete?.caseNumber}</strong> de la vista operativa. Por cumplimiento normativo, el registro NO se borrará físicamente y permanecerá accesible únicamente para auditorías estatales.</>
+                  )}
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
