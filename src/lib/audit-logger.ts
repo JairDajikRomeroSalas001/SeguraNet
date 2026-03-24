@@ -4,9 +4,17 @@
  * Garantiza la trazabilidad y el no repudio de las acciones del personal policial.
  */
 
-import { PoliceCase } from './types';
-
-export type AuditAction = 'LOGIN' | 'LOGOUT' | 'VIEW_EXPEDIENT' | 'CREATE_EXPEDIENT' | 'UPDATE_EXPEDIENT' | 'EXPORT_REPORT' | 'SECURITY_VIOLATION';
+export type AuditAction = 
+  | 'LOGIN' 
+  | 'LOGOUT' 
+  | 'VIEW_EXPEDIENT' 
+  | 'CREATE_EXPEDIENT' 
+  | 'UPDATE_EXPEDIENT' 
+  | 'EXPORT_REPORT' 
+  | 'SECURITY_VIOLATION'
+  | 'CREATE_USER'
+  | 'DELETE_USER'
+  | 'UPDATE_CREDENTIALS';
 
 interface AuditEntry {
   timestamp: string;
@@ -39,9 +47,4 @@ export async function logAuditEvent(
   const logs = JSON.parse(localStorage.getItem('ps_audit_logs') || '[]');
   logs.push(entry);
   localStorage.setItem('ps_audit_logs', JSON.stringify(logs.slice(-1000))); // Mantener últimos 1000 logs
-  
-  // No usar console.log para datos sensibles
-  if (process.env.NODE_ENV === 'development') {
-    // console.info(`[AUDIT] Action: ${action} by ${officerId}`);
-  }
 }

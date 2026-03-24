@@ -7,11 +7,12 @@ import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { SettingsView } from './settings-view';
+import { UsersManagement } from './users-management';
 import { getCases } from '@/lib/store';
 import { 
   LayoutDashboard, FilePlus, ShieldCheck, LogOut, User as UserIcon, 
   Download, FileText, FileSpreadsheet, Shield, Settings, ChevronDown,
-  Globe, Phone, Mail, Facebook, Instagram
+  Globe, Phone, Mail, Facebook, Instagram, Users
 } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { Button } from '@/components/ui/button';
@@ -62,7 +63,6 @@ export function DashboardView() {
     endDate: '',
   });
 
-  // Activar cierre de sesión por inactividad (5 minutos conforme a normativa)
   useSessionTimeout();
 
   const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
@@ -252,6 +252,9 @@ export function DashboardView() {
               <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
                 <FilePlus className="h-3.5 w-3.5" /> Registrar Denuncia
               </TabsTrigger>
+              <TabsTrigger value="usuarios" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
+                <Users className="h-3.5 w-3.5" /> Personal Policial
+              </TabsTrigger>
             </TabsList>
             
             {activeTab === 'panel' && (
@@ -288,6 +291,10 @@ export function DashboardView() {
 
           <TabsContent value="registro" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
             <CaseRegistrationForm onCaseAdded={() => { refreshCases(); setActiveTab('panel'); }} />
+          </TabsContent>
+
+          <TabsContent value="usuarios" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <UsersManagement />
           </TabsContent>
 
           <TabsContent value="configuracion" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">

@@ -10,6 +10,9 @@ interface AuthContextType {
   login: (username: string, password: string) => boolean;
   logout: () => void;
   updateCredentials: (newUsername: string, newPassword: string) => void;
+  getAllUsers: () => { username: string }[];
+  addUser: (username: string, password: string) => void;
+  deleteUser: (username: string) => void;
   isLoading: boolean;
 }
 
@@ -33,11 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = localStorage.getItem('ps_user');
     const sessionFingerprint = localStorage.getItem('ps_session_fingerprint');
     
-    // Validación de integridad de sesión (Defensa contra Session Hijacking)
     if (storedUser && sessionFingerprint) {
       const currentFingerprint = navigator.userAgent;
       if (currentFingerprint !== sessionFingerprint) {
-        logout(); // Invalidar si el User-Agent cambió
+        logout();
       } else {
         setUser(JSON.parse(storedUser));
       }
@@ -55,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser: User = { username: found.username, role: 'admin' };
       setUser(newUser);
       localStorage.setItem('ps_user', JSON.stringify(newUser));
-      // Guardar huella del dispositivo para validación continua
       localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
       
       logAuditEvent(newUser.username, 'LOGIN', 'Successful authentication');
@@ -85,6 +86,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Username changed to ${newUsername}`);
   };
 
+  const getAllUsers = () => {
+    const credsStr = localStorage.getItem('ps_credentials');
+    const credentials = credsStr ? JSON.parse(credsStr) : DEFAULT_CREDENTIALS;
+    return credentials.map((c: any) => ({ username: c.username }));
+  };
+
+  const addUser = (username: string, password: string) => {
+    const credsStr = localStorage.getItem('ps_credentials');
+    let credentials = credsStr ? JSON.parse(credsStr) : [...DEFAULT_CREDENTIALS];
+    
+    if (credentials.find((c: any) => c.username === username)) {
+      throw new Error('El usuario ya existe');
+    }
+
+    credentials.push({ username, password });
+    localStorage.setItem('ps_credentials', JSON.stringify(credentials));
+    
+    if (user) {
+      logAuditEvent(user.username, 'CREATE_USER', `New official account created: ${username}`);
+    }
+  };
+
+  const deleteUser = (username: string) => {
+    if (user?.username === username) {
+      throw new Error('No puedes eliminar tu propia cuenta');
+    }
+
+    const credsStr = localStorage.getItem('ps_credentials');
+    let credentials = credsStr ? JSON.parse(credsStr) : [...DEFAULT_CREDENTIALS];
+
+    credentials = credentials.filter((c: any) => c.username !== username);
+    localStorage.setItem('ps_credentials', JSON.stringify(credentials));
+    
+    if (user) {
+      logAuditEvent(user.username, 'DELETE_USER', `Official account removed: ${username}`);
+    }
+  };
+
   const logout = () => {
     if (user) {
       logAuditEvent(user.username, 'LOGOUT', 'Manual session termination');
@@ -95,7 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateCredentials, isLoading }}>
+    <AuthContext.Provider value={{ 
+      user, login, logout, updateCredentials, getAllUsers, addUser, deleteUser, isLoading 
+    }}>
       {children}
     </AuthContext.Provider>
   );
