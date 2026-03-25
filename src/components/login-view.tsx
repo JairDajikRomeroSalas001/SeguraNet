@@ -124,11 +124,10 @@ export function LoginView() {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2 text-center text-[9px] text-muted-foreground pt-0 pb-6">
-            <div className="bg-secondary/30 p-2 rounded-lg w-full border border-dashed border-primary/20">
-              <p className="font-bold text-primary mb-0.5 uppercase tracking-wider">Modo Demo Activado</p>
-              <p>User: <span className="font-mono font-bold">admin1</span> | Pass: <span className="font-mono font-bold">admin1</span></p>
-            </div>
+          <CardFooter className="pb-6">
+            <p className="text-[8px] text-center w-full text-muted-foreground uppercase tracking-widest font-bold">
+              Uso oficial restringido - SGTD PCM
+            </p>
           </CardFooter>
         </Card>
       </div>
