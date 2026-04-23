@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -293,7 +292,7 @@ export function CaseRegistrationForm({
     resolver: zodResolver(caseSchema),
     defaultValues: initialData || {
       caseNumber: '',
-      assignedOfficer: user?.username ? user.username.toUpperCase() : '',
+      assignedOfficer: user?.fullName ? user.fullName.toUpperCase() : '',
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: getCurrentTimeWithSeconds(),

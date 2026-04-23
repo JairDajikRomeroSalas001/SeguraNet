@@ -43,5 +43,6 @@ export interface PoliceCase {
 
 export interface User {
   username: string;
+  fullName: string;
   role: 'admin';
 }

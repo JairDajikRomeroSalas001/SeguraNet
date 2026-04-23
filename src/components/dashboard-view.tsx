@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -169,7 +168,7 @@ export function DashboardView() {
     doc.text('COMISARIA PNP PAUCARTAMBO - CUSCO', 14, 20);
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text(`REPORTE GENERADO: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | OFICIAL: ${user?.username}`, 14, 28);
+    doc.text(`REPORTE GENERADO: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | OFICIAL: ${user?.fullName}`, 14, 28);
     
     const tableHeaders = [["EXPEDIENTE", "VÍCTIMA", "AGRESOR", "VIOLENCIA", "RIESGO", "OFICIAL", "ESTADO"]];
     const tableData = filteredCases.map(c => [
@@ -221,7 +220,7 @@ export function DashboardView() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-11 px-3 hover:bg-white/10 rounded-xl transition-all border border-white/5 gap-3">
                 <div className="hidden lg:flex flex-col items-end">
-                  <span className="text-xs font-black uppercase tracking-wider">{user?.username}</span>
+                  <span className="text-xs font-black uppercase tracking-wider">{user?.fullName}</span>
                   <span className="text-[9px] text-white/50 font-bold uppercase">Administrador</span>
                 </div>
                 <div className="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
@@ -230,7 +229,7 @@ export function DashboardView() {
                 <ChevronDown className="h-3 w-3 text-white/50" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-primary/10">
+            <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl shadow-2xl border-primary/10">
               <DropdownMenuLabel className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-3 py-2">Cuenta Oficial</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setActiveTab('configuracion')} className="cursor-pointer gap-3 py-2.5 rounded-lg focus:bg-primary/5 focus:text-primary">

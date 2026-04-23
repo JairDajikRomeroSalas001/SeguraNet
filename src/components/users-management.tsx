@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from 'react';
@@ -20,6 +19,7 @@ export function UsersManagement() {
   
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newFullName, setNewFullName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddUser = (e: React.FormEvent) => {
@@ -30,13 +30,14 @@ export function UsersManagement() {
         return;
       }
       
-      addUser(newUsername, newPassword);
+      addUser(newUsername, newPassword, newFullName);
       setUsers(getAllUsers());
       setNewUsername('');
       setNewPassword('');
+      setNewFullName('');
       setIsDialogOpen(false);
       
-      toast({ title: "Usuario Creado", description: `El efectivo ${newUsername} ha sido registrado exitosamente.` });
+      toast({ title: "Usuario Creado", description: `El efectivo ${newFullName} ha sido registrado exitosamente.` });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
@@ -79,10 +80,21 @@ export function UsersManagement() {
             </DialogHeader>
             <form onSubmit={handleAddUser} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID / Nombre de Usuario</Label>
+                <Label htmlFor="new-fullname" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombres y Apellidos Completos</Label>
+                <Input 
+                  id="new-fullname"
+                  placeholder="Ej: SOT2 PNP CARLOS RAMOS"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  className="h-11 rounded-xl font-bold"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID de Usuario (Login)</Label>
                 <Input 
                   id="new-username"
-                  placeholder="Ej: oficial.ramos"
+                  placeholder="Ej: ramos.pnp"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   className="h-11 rounded-xl font-bold"
@@ -122,8 +134,8 @@ export function UsersManagement() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4">ID de Oficial</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">Rango / Rol</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4">Oficial (Nombres y Apellidos)</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">ID / Usuario</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">Estado de Seguridad</TableHead>
                 <TableHead className="text-right font-black text-primary text-[10px] uppercase tracking-wider py-4">Acciones Administrativas</TableHead>
               </TableRow>
@@ -136,7 +148,7 @@ export function UsersManagement() {
                       <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
                         <ShieldCheck className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="uppercase">{u.username}</span>
+                      <span className="uppercase">{u.fullName}</span>
                       {currentUser?.username === u.username && (
                         <Badge variant="secondary" className="text-[9px] font-black bg-emerald-100 text-emerald-700 border-emerald-200">SESIÓN ACTUAL</Badge>
                       )}
@@ -144,7 +156,7 @@ export function UsersManagement() {
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5">
-                      Personal Autorizado
+                      {u.username}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">

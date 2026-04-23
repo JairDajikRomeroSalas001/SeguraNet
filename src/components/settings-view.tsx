@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert } from 'lucide-react';
+import { User, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert, BadgeCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getCases } from '@/lib/store';
 import { logAuditEvent } from '@/lib/audit-logger';
@@ -19,6 +19,7 @@ export function SettingsView() {
   const { toast } = useToast();
   
   const [newUsername, setNewUsername] = useState(user?.username || '');
+  const [newFullName, setNewFullName] = useState(user?.fullName || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -54,7 +55,7 @@ export function SettingsView() {
       return;
     }
 
-    if (newPassword.length < 4) {
+    if (newPassword && newPassword.length < 4) {
       toast({
         variant: "destructive",
         title: "Error de Seguridad",
@@ -66,7 +67,7 @@ export function SettingsView() {
     setIsUpdating(true);
     
     setTimeout(() => {
-      updateCredentials(newUsername, newPassword);
+      updateCredentials(newUsername, newPassword || currentPassword, newFullName);
       setIsUpdating(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -109,7 +110,7 @@ export function SettingsView() {
       const backupData = {
         sistema: "Paucartambo Segura v2.0",
         fecha_respaldo: new Date().toISOString(),
-        oficial_responsable: user?.username,
+        oficial_responsable: user?.fullName,
         base_de_datos: {
           expedientes: cases,
           logs_auditoria: auditLogs
@@ -157,8 +158,20 @@ export function SettingsView() {
         <CardContent className="pt-8">
           <form onSubmit={handleUpdate} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="new-fullname" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombres y Apellidos Completos</Label>
+                <div className="relative">
+                  <BadgeCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <Input 
+                    id="new-fullname"
+                    value={newFullName}
+                    onChange={(e) => setNewFullName(e.target.value)}
+                    className="pl-10 h-11 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nuevo Usuario</Label>
+                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID / Usuario (Login)</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                   <Input 
@@ -183,7 +196,7 @@ export function SettingsView() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nueva Contraseña</Label>
+                <Label htmlFor="new-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nueva Contraseña (Opcional)</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                   <Input 
@@ -192,6 +205,7 @@ export function SettingsView() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="pl-10 h-11 rounded-xl font-bold"
+                    placeholder="Dejar en blanco para no cambiar"
                   />
                 </div>
               </div>
@@ -221,7 +235,7 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* CARD DE RESPALDO (CISO STANDARDS) */}
+      {/* CARD DE RESPALDO */}
       <Card className="shadow-xl border-amber-200 overflow-hidden rounded-2xl bg-amber-50/30">
         <CardHeader className="bg-amber-600 text-white py-6">
           <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
@@ -239,7 +253,7 @@ export function SettingsView() {
                 <span className="text-[10px] font-black uppercase tracking-widest">Protocolo de Respaldo</span>
               </div>
               <p className="text-[11px] text-amber-700 leading-tight font-medium">
-                Esta opción genera un archivo JSON con **toda la información** del sistema, incluyendo expedientes eliminados y logs de auditoría. Este archivo es vital para inspecciones de la PCM o fiscalización judicial.
+                Esta opción genera un archivo JSON con **toda la información** del sistema, incluyendo expedientes eliminados y logs de auditoría.
               </p>
             </div>
             <Button 
@@ -250,11 +264,6 @@ export function SettingsView() {
             </Button>
           </div>
         </CardContent>
-        <CardFooter className="bg-amber-100/50 py-4 flex justify-center border-t border-amber-200">
-          <p className="text-[9px] text-amber-800 uppercase font-black tracking-widest flex items-center gap-2">
-            <ShieldCheck className="h-3 w-3" /> Respaldo de Integridad Estándar SGTD-PCM
-          </p>
-        </CardFooter>
       </Card>
 
       {/* DIALOGO DE SEGURIDAD PARA BACKUP */}
