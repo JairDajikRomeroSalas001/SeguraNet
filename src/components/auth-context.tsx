@@ -63,11 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('ps_user', JSON.stringify(newUser));
       localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
       
-      logAuditEvent(newUser.username, 'LOGIN', `Session started by ${newUser.fullName} (DNI: ${newUser.dni})`);
+      logAuditEvent(newUser.username, 'LOGIN', `Sesión iniciada por ${newUser.fullName} (DNI: ${newUser.dni})`);
       return true;
     }
     
-    logAuditEvent(username, 'SECURITY_VIOLATION', 'Failed login attempt');
+    logAuditEvent(username, 'SECURITY_VIOLATION', 'Intento de login fallido');
     return false;
   };
 
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updatedUser);
     localStorage.setItem('ps_user', JSON.stringify(updatedUser));
     
-    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Profile updated: ${newFullName} (DNI: ${newDni})`);
+    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Perfil actualizado: ${newFullName} (DNI: ${newDni})`);
   };
 
   const getAllUsers = () => {
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ps_credentials', JSON.stringify(credentials));
     
     if (user) {
-      logAuditEvent(user.username, 'CREATE_USER', `New official account created for: ${fullName} (DNI: ${dni})`);
+      logAuditEvent(user.username, 'CREATE_USER', `Nueva cuenta oficial creada para: ${fullName} (DNI: ${dni})`);
     }
   };
 
@@ -130,13 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ps_credentials', JSON.stringify(credentials));
     
     if (user) {
-      logAuditEvent(user.username, 'DELETE_USER', `Official account removed: ${username}`);
+      logAuditEvent(user.username, 'DELETE_USER', `Cuenta oficial eliminada: ${username}`);
     }
   };
 
   const logout = () => {
     if (user) {
-      logAuditEvent(user.username, 'LOGOUT', 'Manual session termination');
+      logAuditEvent(user.username, 'LOGOUT', 'Terminación de sesión manual');
     }
     setUser(null);
     localStorage.removeItem('ps_user');

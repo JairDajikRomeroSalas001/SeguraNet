@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth-context';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert, BadgeCheck, Fingerprint } from 'lucide-react';
+import { User as UserIcon, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert, BadgeCheck, Fingerprint } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getCases } from '@/lib/store';
 import { logAuditEvent } from '@/lib/audit-logger';
@@ -18,13 +18,22 @@ export function SettingsView() {
   const { user, updateCredentials } = useAuth();
   const { toast } = useToast();
   
-  const [newUsername, setNewUsername] = useState(user?.username || '');
-  const [newFullName, setNewFullName] = useState(user?.fullName || '');
-  const [newDni, setNewDni] = useState(user?.dni || '');
+  const [newUsername, setNewUsername] = useState('');
+  const [newFullName, setNewFullName] = useState('');
+  const [newDni, setNewDni] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Efecto para sincronizar los estados locales cuando cambie el usuario en el contexto
+  useEffect(() => {
+    if (user) {
+      setNewUsername(user.username);
+      setNewFullName(user.fullName);
+      setNewDni(user.dni);
+    }
+  }, [user]);
 
   // Estados para Backup
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
@@ -100,11 +109,10 @@ export function SettingsView() {
         title: "Autorización Denegada",
         description: "Contraseña de administrador incorrecta."
       });
-      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', 'Failed attempt to download system backup');
+      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', 'Intento fallido de descargar backup');
       return;
     }
 
-    // Proceso de Respaldo
     try {
       const cases = getCases(true); 
       const auditLogs = JSON.parse(localStorage.getItem('ps_audit_logs') || '[]');
@@ -128,7 +136,7 @@ export function SettingsView() {
       link.click();
       document.body.removeChild(link);
 
-      logAuditEvent(user?.username || 'unknown', 'SYSTEM_BACKUP', 'Full database and audit logs backup generated');
+      logAuditEvent(user?.username || 'unknown', 'SYSTEM_BACKUP', 'Backup completo generado');
       
       toast({
         title: "Respaldo Generado",
@@ -187,7 +195,7 @@ export function SettingsView() {
               <div className="space-y-2">
                 <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID / Usuario (Login)</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                   <Input 
                     id="new-username"
                     value={newUsername}
@@ -206,6 +214,7 @@ export function SettingsView() {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     className="pl-10 h-11 rounded-xl font-bold"
+                    placeholder="Ingrese su clave para confirmar cambios"
                   />
                 </div>
               </div>
