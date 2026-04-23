@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CaseList } from './cases/case-list';
 import { CaseRegistrationForm } from './cases/case-registration-form';
@@ -65,6 +66,7 @@ export function DashboardView() {
   useSessionTimeout();
 
   const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
+  const isSuperadmin = user?.username === 'admin1';
 
   const applyFilters = useCallback((casesToFilter: PoliceCase[], filters: SearchFilters) => {
     let result = [...casesToFilter];
@@ -221,7 +223,7 @@ export function DashboardView() {
               <Button variant="ghost" className="h-11 px-3 hover:bg-white/10 rounded-xl transition-all border border-white/5 gap-3">
                 <div className="hidden lg:flex flex-col items-end">
                   <span className="text-xs font-black uppercase tracking-wider">{user?.fullName}</span>
-                  <span className="text-[9px] text-white/50 font-bold uppercase">Administrador</span>
+                  <span className="text-[9px] text-white/50 font-bold uppercase">{isSuperadmin ? 'Superusuario' : 'Oficial Operativo'}</span>
                 </div>
                 <div className="h-8 w-8 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
                   <UserIcon className="h-4 w-4 text-white" />
@@ -254,9 +256,11 @@ export function DashboardView() {
               <TabsTrigger value="registro" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
                 <FilePlus className="h-3.5 w-3.5" /> Registrar Denuncia
               </TabsTrigger>
-              <TabsTrigger value="usuarios" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
-                <Users className="h-3.5 w-3.5" /> Personal Policial
-              </TabsTrigger>
+              {isSuperadmin && (
+                <TabsTrigger value="usuarios" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
+                  <Users className="h-3.5 w-3.5" /> Personal Policial
+                </TabsTrigger>
+              )}
             </TabsList>
             
             {activeTab === 'panel' && (
@@ -277,7 +281,7 @@ export function DashboardView() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <div className="h-10 flex items-center px-4 bg-white border border-primary/10 rounded-lg shadow-sm">
-                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mr-2">DENUNCIAS</span>
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mr-2">REGISTROS</span>
                   <span className="text-lg font-black text-primary leading-none">{filteredCases.length}</span>
                 </div>
               </div>
@@ -295,9 +299,11 @@ export function DashboardView() {
             <CaseRegistrationForm onCaseAdded={() => { refreshCases(); setActiveTab('panel'); }} />
           </TabsContent>
 
-          <TabsContent value="usuarios" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <UsersManagement />
-          </TabsContent>
+          {isSuperadmin && (
+            <TabsContent value="usuarios" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <UsersManagement />
+            </TabsContent>
+          )}
 
           <TabsContent value="configuracion" className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
             <SettingsView />
@@ -326,24 +332,11 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col items-center md:items-end">
-              <div className="flex items-center gap-1 mb-1">
-                <span className="text-[8px] uppercase tracking-[0.1em] text-muted-foreground font-bold">Desarrollado por</span>
-                <span className="text-[10px] font-black tracking-widest text-primary uppercase">Codex Cusco</span>
-              </div>
-              <div className="flex gap-4 text-[9px] font-bold text-muted-foreground/80">
-                <a href="https://codexcusco.com" target="_blank" className="hover:text-primary transition-colors">codexcusco.com</a>
-                <a href="tel:+51972156954" className="hover:text-primary transition-colors">972 156 954</a>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Facebook className="h-3 w-3" /></a>
-              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Instagram className="h-3 w-3" /></a>
-              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><XIcon className="h-3 w-3" /></a>
-              <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><TikTokIcon className="h-3 w-3" /></a>
-            </div>
+          <div className="flex gap-2">
+            <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Facebook className="h-3 w-3" /></a>
+            <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><Instagram className="h-3 w-3" /></a>
+            <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><XIcon className="h-3 w-3" /></a>
+            <a href="#" className="p-1.5 bg-muted/10 rounded-lg hover:bg-primary hover:text-white transition-all"><TikTokIcon className="h-3 w-3" /></a>
           </div>
         </div>
       </footer>

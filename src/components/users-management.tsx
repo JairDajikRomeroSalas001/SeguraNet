@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -24,8 +25,12 @@ export function UsersManagement() {
   const [newDni, setNewDni] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const isSuperadmin = currentUser?.username === 'admin1';
+
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperadmin) return;
+
     try {
       if (newDni.length !== 8 || !/^\d+$/.test(newDni)) {
         toast({ variant: "destructive", title: "DNI inválido", description: "El DNI debe tener exactamente 8 dígitos numéricos." });
@@ -52,6 +57,14 @@ export function UsersManagement() {
   };
 
   const handleDeleteUser = (username: string) => {
+    if (!isSuperadmin) return;
+    
+    // Evitar que cualquiera (incluso superadmin) borre al superadmin raíz
+    if (username === 'admin1') {
+      toast({ variant: "destructive", title: "Acción Prohibida", description: "La cuenta raíz del sistema no puede ser eliminada." });
+      return;
+    }
+
     try {
       deleteUser(username);
       setUsers(getAllUsers());
@@ -65,6 +78,10 @@ export function UsersManagement() {
     const value = e.target.value.replace(/\D/g, '');
     setter(value);
   };
+
+  if (!isSuperadmin) {
+    return <div className="p-8 text-center font-bold text-destructive">ACCESO DENEGADO. RECURSO SOLO PARA SUPERUSUARIOS.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -143,7 +160,7 @@ export function UsersManagement() {
               <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200 flex gap-3">
                 <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
                 <p className="text-[10px] text-amber-700 font-medium leading-tight">
-                  Al crear este usuario, usted asume la responsabilidad administrativa de su acceso al sistema de denuncias.
+                  Al crear este usuario, usted asume la responsabilidad administrativa de su acceso.
                 </p>
               </div>
               <DialogFooter className="sm:justify-center pt-2">
@@ -181,6 +198,9 @@ export function UsersManagement() {
                         {currentUser?.username === u.username && (
                           <Badge variant="secondary" className="text-[9px] font-black bg-emerald-100 text-emerald-700 border-emerald-200 w-fit">SESIÓN ACTIVA</Badge>
                         )}
+                        {u.username === 'admin1' && (
+                          <Badge variant="outline" className="text-[9px] font-black border-amber-400 text-amber-700 bg-amber-50 w-fit">CUENTA RAÍZ</Badge>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -202,8 +222,8 @@ export function UsersManagement() {
                       variant="ghost" 
                       size="sm" 
                       onClick={() => handleDeleteUser(u.username)}
-                      disabled={currentUser?.username === u.username}
-                      className="h-8 gap-2 text-[10px] font-black text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg px-3"
+                      disabled={u.username === 'admin1' || currentUser?.username === u.username}
+                      className="h-8 gap-2 text-[10px] font-black text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg px-3 disabled:opacity-30"
                     >
                       <UserMinus className="h-3.5 w-3.5" /> BAJA
                     </Button>

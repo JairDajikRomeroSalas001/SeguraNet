@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -69,6 +70,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
   const totalPages = Math.ceil(cases.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedCases = cases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const canManageCase = (pCase: PoliceCase) => {
+    if (!user) return false;
+    return user.username === 'admin1' || pCase.createdByUsername === user.username;
+  };
 
   const handleStatusChangeAttempt = (caseId: string, caseNumber: string, newStatus: CaseStatus) => {
     setTargetStatus({ id: caseId, caseNumber, status: newStatus });
@@ -142,7 +148,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     }
     else if (passwordPurpose === 'delete' && targetDelete) {
       deleteCase(targetDelete.id);
-      toast({ title: "Expediente Eliminado", description: `El expediente ${targetDelete.caseNumber} ha sido removido de la vista operativa.` });
+      toast({ title: "Expediente Eliminado", description: `El expediente ${targetDelete.caseNumber} ha sido removido.` });
       logAuditEvent(user?.username || 'unknown', 'DELETE_EXPEDIENT', `Logical deletion of ${targetDelete.caseNumber}`, targetDelete.id);
       onUpdate();
       handleCancelPassword();
@@ -164,41 +170,35 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     const textColor = [30, 41, 59];
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 40, 'F');
+    doc.rect(0, 0, 210, 35, 'F');
 
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(0.8);
-    doc.circle(25, 20, 9, 'S');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PNP', 25, 21, { align: 'center' });
-
     doc.setFontSize(14);
-    doc.text('POLICÍA NACIONAL DEL PERÚ', 110, 14, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('POLICÍA NACIONAL DEL PERÚ', 105, 12, { align: 'center' });
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('REGIÓN POLICIAL CUSCO - COMISARÍA PAUCARTAMBO', 110, 19, { align: 'center' });
+    doc.text('REGIÓN POLICIAL CUSCO - COMISARÍA PAUCARTAMBO', 105, 17, { align: 'center' });
     doc.setFontSize(7.5);
-    doc.text('SISTEMA DE GESTIÓN DE DENUNCIAS "PAUCARTAMBO SEGURA"', 110, 24, { align: 'center' });
+    doc.text('SISTEMA DE GESTIÓN DE DENUNCIAS "PAUCARTAMBO SEGURA"', 105, 21, { align: 'center' });
 
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(65, 29, 90, 6, 1, 1, 'F');
+    doc.roundedRect(65, 25, 80, 5, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text(`EXPEDIENTE NRO: ${c.caseNumber}`, 110, 33.2, { align: 'center' });
+    doc.text(`EXPEDIENTE NRO: ${c.caseNumber}`, 105, 28.5, { align: 'center' });
 
-    let y = 48;
+    let y = 42;
 
     const drawSectionHeader = (title: string, color: number[], icon: string) => {
       doc.setFillColor(color[0], color[1], color[2]);
-      doc.roundedRect(14, y, 182, 5, 1, 1, 'F');
+      doc.roundedRect(14, y, 182, 4.5, 1, 1, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${icon}  ${title.toUpperCase()}`, 18, y + 3.5);
-      y += 7;
+      doc.text(`${icon}  ${title.toUpperCase()}`, 18, y + 3);
+      y += 6;
     };
 
     const drawDataTable = (data: any[][]) => {
@@ -206,11 +206,11 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
         startY: y,
         body: data,
         theme: 'plain',
-        styles: { fontSize: 7, cellPadding: 1, textColor: textColor, font: 'helvetica' },
+        styles: { fontSize: 7, cellPadding: 0.8, textColor: textColor, font: 'helvetica' },
         columnStyles: { 0: { fontStyle: 'bold', width: 40, textColor: [0, 0, 0] } },
         margin: { left: 16, right: 16 }
       });
-      y = (doc as any).lastAutoTable.finalY + 3;
+      y = (doc as any).lastAutoTable.finalY + 2.5;
     };
 
     drawSectionHeader('Información General del Registro', primaryColor, '📋');
@@ -249,35 +249,29 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     ]);
 
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-    doc.roundedRect(14, y, 182, 25, 1, 1, 'F');
+    doc.roundedRect(14, y, 182, 22, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.text('DESCRIPCIÓN DETALLADA DE LOS HECHOS:', 18, y + 4.5);
+    doc.text('DESCRIPCIÓN DETALLADA DE LOS HECHOS:', 18, y + 4);
     
     doc.setTextColor(60, 60, 60);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     const splitDescription = doc.splitTextToSize(c.incidentDescription, 174);
-    doc.text(splitDescription, 18, y + 9);
-    y += 30;
+    doc.text(splitDescription, 18, y + 8);
+    y += 26;
 
     const pageHeight = doc.internal.pageSize.height;
     
-    doc.setDrawColor(220, 220, 220);
-    doc.rect(14, pageHeight - 45, 25, 20);
-    doc.setFontSize(5.5);
-    doc.setTextColor(180, 180, 180);
-    doc.text('SELLO DIGITAL\nADMINISTRATIVO', 26.5, pageHeight - 35, { align: 'center' });
-
-    doc.setDrawColor(100, 100, 100);
-    doc.setLineWidth(0.4);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
     doc.line(70, pageHeight - 35, 140, pageHeight - 35);
     doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 31, { align: 'center' });
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.text(c.assignedOfficer, 105, pageHeight - 27, { align: 'center' });
 
@@ -285,12 +279,12 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     doc.rect(0, pageHeight - 10, 210, 10, 'F');
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6);
-    doc.text(`Documento generado electrónicamente el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | Sistema Paucartambo Segura v2.0`, 105, pageHeight - 6, { align: 'center' });
+    doc.text(`Generado el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | Paucartambo Segura v2.0`, 105, pageHeight - 6, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('DESARROLLADO POR CODEX CUSCO - INNOVACIÓN TECNOLÓGICA PARA LA SEGURIDAD CIUDADANA', 105, pageHeight - 3, { align: 'center' });
+    doc.text('DESARROLLADO POR CODEX CUSCO - INNOVACIÓN PARA LA SEGURIDAD CIUDADANA', 105, pageHeight - 3, { align: 'center' });
 
-    doc.save(`EXPEDIENTE_${c.caseNumber}_PAUCARTAMBO.pdf`);
+    doc.save(`EXPEDIENTE_${c.caseNumber}.pdf`);
   };
 
   if (cases.length === 0) {
@@ -336,8 +330,9 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                   <Select 
                     value={c.status} 
                     onValueChange={(val) => handleStatusChangeAttempt(c.id, c.caseNumber, val as CaseStatus)}
+                    disabled={!canManageCase(c)}
                   >
-                    <SelectTrigger className={`h-7 w-[130px] text-[10px] font-black bg-muted/20 ${statusConfig[c.status].color} rounded-lg`}>
+                    <SelectTrigger className={`h-7 w-[130px] text-[10px] font-black bg-muted/20 ${statusConfig[c.status].color} rounded-lg ${!canManageCase(c) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -368,7 +363,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-7 gap-1 text-[9px] font-black border-amber-500/20 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg px-2"
+                      disabled={!canManageCase(c)}
+                      className="h-7 gap-1 text-[9px] font-black border-amber-500/20 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg px-2 disabled:opacity-30"
                       onClick={() => handleEditEntryAttempt(c)}
                     >
                       <Edit className="h-3 w-3" /> EDITAR
@@ -376,7 +372,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-7 gap-1 text-[9px] font-black border-destructive/20 text-destructive hover:bg-destructive hover:text-white rounded-lg px-2"
+                      disabled={!canManageCase(c)}
+                      className="h-7 gap-1 text-[9px] font-black border-destructive/20 text-destructive hover:bg-destructive hover:text-white rounded-lg px-2 disabled:opacity-30"
                       onClick={() => handleDeleteAttempt(c.id, c.caseNumber)}
                     >
                       <Trash2 className="h-3 w-3" /> BORRAR
@@ -547,16 +544,16 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
                 </div>
                 <div className="text-[11px] text-amber-700 leading-tight font-medium">
                   {passwordPurpose === 'status' && (
-                    <>Va a modificar el estado del expediente <strong className="text-amber-900">{targetStatus?.caseNumber}</strong> a <strong className="text-amber-900">"{targetStatus?.status}"</strong>. Este acto es IRREVOCABLE.</>
+                    <>Va a modificar el estado del expediente <strong className="text-amber-900">{targetStatus?.caseNumber}</strong>. Este acto es IRREVOCABLE.</>
                   )}
                   {passwordPurpose === 'edit-entry' && (
                     <>Usted está solicitando acceso al modo de edición del expediente <strong className="text-amber-900">{targetEdit?.caseNumber}</strong>. Toda modificación quedará registrada.</>
                   )}
                   {passwordPurpose === 'edit-save' && (
-                    <>Confirmar el guardado final de los cambios realizados en el expediente <strong className="text-amber-900">{pendingEditData?.caseNumber}</strong>. Se requiere firma digital de su cuenta.</>
+                    <>Confirmar el guardado final de los cambios realizados en el expediente <strong className="text-amber-900">{pendingEditData?.caseNumber}</strong>. Se requiere firma digital.</>
                   )}
                   {passwordPurpose === 'delete' && (
-                    <>Está a punto de ELIMINAR el expediente <strong className="text-amber-900">{targetDelete?.caseNumber}</strong> de la vista operativa. Por cumplimiento normativo, el registro NO se borrará físicamente y permanecerá accesible únicamente para auditorías estatales.</>
+                    <>Está a punto de ELIMINAR el expediente <strong className="text-amber-900">{targetDelete?.caseNumber}</strong>. El registro NO se borrará físicamente por auditoría.</>
                   )}
                 </div>
               </div>

@@ -1,3 +1,4 @@
+
 export type CaseStatus = 'Pendiente' | 'En Proceso' | 'Resuelto' | 'Cerrado' | 'Archivado';
 export type RiskLevel = 'Leve' | 'Moderado' | 'Severo' | 'Muy Severo';
 
@@ -15,6 +16,7 @@ export interface PoliceCase {
   id: string;
   caseNumber: string;
   assignedOfficer: string;
+  createdByUsername: string; // Identificador del oficial que creó el registro
   // Paso 1: Datos del Expediente
   origin: string;
   entryDate: string;

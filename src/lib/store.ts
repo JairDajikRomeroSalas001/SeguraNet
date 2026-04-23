@@ -1,10 +1,12 @@
+
 import { PoliceCase, CaseStatus } from './types';
 
 let cases: PoliceCase[] = [
   {
     id: '1',
     caseNumber: 'EXP-2024-001',
-    assignedOfficer: 'SOT1 PNP RAMOS QUISPE',
+    assignedOfficer: 'MARCO ANTONIO CASAS SOLIS',
+    createdByUsername: 'admin1',
     origin: 'Denuncia Directa',
     entryDate: '2024-05-15',
     entryTime: '10:30:00',
@@ -45,7 +47,7 @@ export const getCases = (includeDeleted = false) =>
   includeDeleted ? [...cases] : cases.filter(c => !c.isDeleted);
 
 export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const nextId = (cases.length + 1).toString();
+  const nextId = Math.random().toString(36).substring(2, 9);
   
   const createdCase: PoliceCase = {
     ...newCaseData,

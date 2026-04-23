@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,13 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  FilePlus, FileText, Info, Clock, Calendar, Building2, 
+  FilePlus, FileText, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
   ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck, Save, Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { PoliceCase } from '@/lib/types';
@@ -105,7 +105,7 @@ const riskOptions = [
     desc: "Riesgo alto, existe probabilidad de nuevas agresiones graves. Requiere intervención prioritaria.", 
     color: "border-orange-200 bg-orange-50 text-orange-700", 
     accent: "bg-orange-500",
-    hover: "hover:border-orange-400 hover:bg-orange-100"
+    hover: "hover:border-orange-400 hover:bg-amber-100"
   },
   { 
     value: "Muy Severo", 
@@ -347,7 +347,7 @@ export function CaseRegistrationForm({
       toast({ 
         variant: "destructive", 
         title: "Datos inválidos o incompletos", 
-        description: "Por favor verifique que el DNI tenga 8 dígitos y el celular 9 dígitos (empezando con 9)." 
+        description: "Por favor verifique que el DNI tenga 8 dígitos y el celular 9 dígitos." 
       });
     }
   };
@@ -365,6 +365,7 @@ export function CaseRegistrationForm({
     } else {
       addCase({
         ...values,
+        createdByUsername: user?.username || 'unknown',
         status: 'Pendiente',
         tags: [values.violenceType, values.riskLevel],
       });
