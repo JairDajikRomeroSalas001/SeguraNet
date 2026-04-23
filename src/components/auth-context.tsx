@@ -18,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEFAULT_CREDENTIALS = [
-  { username: 'admin1', password: 'admin1', fullName: 'MARCO ANTONIO CASAS SOLIS', dni: '10203040' },
+  { username: 'admin1', password: 'admin1', fullName: 'MARCO ANTONIO CASAS SOLIS', dni: '98543265' },
   { username: 'admin2', password: 'admin2', fullName: 'SOT1. PNP MARIA ESPINOZA LUNA', dni: '80706050' }
 ];
 
