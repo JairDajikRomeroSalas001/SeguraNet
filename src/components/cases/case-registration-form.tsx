@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   FilePlus, FileText, Info, Clock, Calendar, Building2, 
   Send, Hash, User, ShieldAlert, 
-  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck, Save
+  ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck, Save, Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCase } from '@/lib/store';
@@ -293,7 +293,7 @@ export function CaseRegistrationForm({
     resolver: zodResolver(caseSchema),
     defaultValues: initialData || {
       caseNumber: '',
-      assignedOfficer: '',
+      assignedOfficer: user?.username ? user.username.toUpperCase() : '',
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: getCurrentTimeWithSeconds(),
@@ -354,7 +354,6 @@ export function CaseRegistrationForm({
   };
 
   const onSubmit = async (values: FormData) => {
-    // Generar hash de integridad (No Repudio)
     const integrityHash = await generateDataHash(values);
     
     if (isEditing) {
@@ -362,7 +361,7 @@ export function CaseRegistrationForm({
         ...initialData,
         ...values,
         tags: [values.violenceType, values.riskLevel],
-        integrityHash, // Adjuntar firma de integridad
+        integrityHash,
       });
     } else {
       addCase({
@@ -412,8 +411,18 @@ export function CaseRegistrationForm({
                   )} />
                   <FormField control={form.control} name="assignedOfficer" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-primary/70" /> Oficial Asignado</FormLabel>
-                      <FormControl><Input placeholder="Grado, Nombres y Apellidos" {...field} /></FormControl>
+                      <FormLabel className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-primary/70" /> Oficial Asignado (Sistema)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            readOnly 
+                            className="bg-muted/50 font-black uppercase text-primary border-primary/20 pl-10 cursor-not-allowed" 
+                            {...field} 
+                          />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40" />
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Identidad verificada por sesión activa</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )} />
