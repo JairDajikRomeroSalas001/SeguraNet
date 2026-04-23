@@ -1,4 +1,3 @@
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -30,7 +29,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Configuración de Cabeceras de Seguridad (OWASP ASVS / SGTD-PCM)
   async headers() {
     return [
       {
@@ -53,8 +51,12 @@ const nextConfig: NextConfig = {
             value: 'strict-origin-when-cross-origin',
           },
           {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
+          {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: https://picsum.photos https://images.unsplash.com; connect-src 'self';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: https://picsum.photos https://images.unsplash.com; connect-src 'self' https://vitals.vercel-insights.com;",
           },
         ],
       },
