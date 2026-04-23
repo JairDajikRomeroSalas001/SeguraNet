@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { UserPlus, UserMinus, ShieldCheck, Users, ShieldAlert, BadgeCheck } from 'lucide-react';
+import { UserPlus, UserMinus, ShieldCheck, Users, ShieldAlert, BadgeCheck, Fingerprint } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { maskDni } from '@/lib/crypto';
 
 export function UsersManagement() {
   const { getAllUsers, addUser, deleteUser, user: currentUser } = useAuth();
@@ -20,21 +21,28 @@ export function UsersManagement() {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newFullName, setNewFullName] = useState('');
+  const [newDni, setNewDni] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (newDni.length !== 8 || !/^\d+$/.test(newDni)) {
+        toast({ variant: "destructive", title: "DNI inválido", description: "El DNI debe tener exactamente 8 dígitos numéricos." });
+        return;
+      }
+
       if (newPassword.length < 4) {
         toast({ variant: "destructive", title: "Seguridad insuficiente", description: "La contraseña debe tener al menos 4 caracteres." });
         return;
       }
       
-      addUser(newUsername, newPassword, newFullName);
+      addUser(newUsername, newPassword, newFullName, newDni);
       setUsers(getAllUsers());
       setNewUsername('');
       setNewPassword('');
       setNewFullName('');
+      setNewDni('');
       setIsDialogOpen(false);
       
       toast({ title: "Usuario Creado", description: `El efectivo ${newFullName} ha sido registrado exitosamente.` });
@@ -51,6 +59,11 @@ export function UsersManagement() {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
+  };
+
+  const handleNumericInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setter(value);
   };
 
   return (
@@ -75,7 +88,7 @@ export function UsersManagement() {
             <DialogHeader className="text-center sm:text-center">
               <DialogTitle className="text-xl font-black text-primary uppercase">Alta de Usuario Oficial</DialogTitle>
               <CardDescription className="text-xs font-bold uppercase tracking-tight pt-1">
-                Ingrese las credenciales para el nuevo oficial
+                Ingrese los datos completos para el nuevo oficial
               </CardDescription>
             </DialogHeader>
             <form onSubmit={handleAddUser} className="space-y-4 py-4">
@@ -90,16 +103,30 @@ export function UsersManagement() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID de Usuario (Login)</Label>
-                <Input 
-                  id="new-username"
-                  placeholder="Ej: ramos.pnp"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  className="h-11 rounded-xl font-bold"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-dni" className="text-[10px] font-black uppercase text-muted-foreground ml-1">DNI (8 dígitos)</Label>
+                  <Input 
+                    id="new-dni"
+                    placeholder="8 dígitos"
+                    maxLength={8}
+                    value={newDni}
+                    onChange={(e) => handleNumericInput(e, setNewDni)}
+                    className="h-11 rounded-xl font-bold"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID Usuario (Login)</Label>
+                  <Input 
+                    id="new-username"
+                    placeholder="Ej: ramos.pnp"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="h-11 rounded-xl font-bold"
+                    required
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-password" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña de Acceso</Label>
@@ -134,10 +161,11 @@ export function UsersManagement() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4">Oficial (Nombres y Apellidos)</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">ID / Usuario</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">Estado de Seguridad</TableHead>
-                <TableHead className="text-right font-black text-primary text-[10px] uppercase tracking-wider py-4">Acciones Administrativas</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4">Oficial (Identidad Completa)</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">DNI</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">Usuario</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase tracking-wider py-4 text-center">Estado</TableHead>
+                <TableHead className="text-right font-black text-primary text-[10px] uppercase tracking-wider py-4">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,11 +176,16 @@ export function UsersManagement() {
                       <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
                         <ShieldCheck className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="uppercase">{u.fullName}</span>
-                      {currentUser?.username === u.username && (
-                        <Badge variant="secondary" className="text-[9px] font-black bg-emerald-100 text-emerald-700 border-emerald-200">SESIÓN ACTUAL</Badge>
-                      )}
+                      <div className="flex flex-col">
+                        <span className="uppercase">{u.fullName}</span>
+                        {currentUser?.username === u.username && (
+                          <Badge variant="secondary" className="text-[9px] font-black bg-emerald-100 text-emerald-700 border-emerald-200 w-fit">SESIÓN ACTIVA</Badge>
+                        )}
+                      </div>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className="font-mono text-xs">{maskDni(u.dni)}</span>
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5">
@@ -161,7 +194,7 @@ export function UsersManagement() {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1.5 text-emerald-600 font-bold text-[10px]">
-                      <BadgeCheck className="h-3 w-3" /> VERIFICADO POR PCM
+                      <BadgeCheck className="h-3 w-3" /> VERIFICADO
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -172,7 +205,7 @@ export function UsersManagement() {
                       disabled={currentUser?.username === u.username}
                       className="h-8 gap-2 text-[10px] font-black text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg px-3"
                     >
-                      <UserMinus className="h-3.5 w-3.5" /> DAR DE BAJA
+                      <UserMinus className="h-3.5 w-3.5" /> BAJA
                     </Button>
                   </TableCell>
                 </TableRow>

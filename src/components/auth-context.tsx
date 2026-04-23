@@ -8,9 +8,9 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  updateCredentials: (newUsername: string, newPassword: string, newFullName: string) => void;
-  getAllUsers: () => { username: string, fullName: string }[];
-  addUser: (username: string, password: string, fullName: string) => void;
+  updateCredentials: (newUsername: string, newPassword: string, newFullName: string, newDni: string) => void;
+  getAllUsers: () => { username: string, fullName: string, dni: string }[];
+  addUser: (username: string, password: string, fullName: string, dni: string) => void;
   deleteUser: (username: string) => void;
   isLoading: boolean;
 }
@@ -18,8 +18,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEFAULT_CREDENTIALS = [
-  { username: 'admin1', password: 'admin1', fullName: 'MY. PNP CARLOS RAMOS TORRES' },
-  { username: 'admin2', password: 'admin2', fullName: 'SOT1. PNP MARIA ESPINOZA LUNA' }
+  { username: 'admin1', password: 'admin1', fullName: 'MARCO ANTONIO CASAS SOLIS', dni: '10203040' },
+  { username: 'admin2', password: 'admin2', fullName: 'SOT1. PNP MARIA ESPINOZA LUNA', dni: '80706050' }
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -56,13 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser: User = { 
         username: found.username, 
         fullName: found.fullName || found.username, 
+        dni: found.dni || '00000000',
         role: 'admin' 
       };
       setUser(newUser);
       localStorage.setItem('ps_user', JSON.stringify(newUser));
       localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
       
-      logAuditEvent(newUser.username, 'LOGIN', `Session started by ${newUser.fullName}`);
+      logAuditEvent(newUser.username, 'LOGIN', `Session started by ${newUser.fullName} (DNI: ${newUser.dni})`);
       return true;
     }
     
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const updateCredentials = (newUsername: string, newPassword: string, newFullName: string) => {
+  const updateCredentials = (newUsername: string, newPassword: string, newFullName: string, newDni: string) => {
     if (!user) return;
 
     const credsStr = localStorage.getItem('ps_credentials');
@@ -78,17 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     credentials = credentials.map((c: any) => 
       c.username === user.username 
-        ? { username: newUsername, password: newPassword, fullName: newFullName } 
+        ? { username: newUsername, password: newPassword, fullName: newFullName, dni: newDni } 
         : c
     );
 
     localStorage.setItem('ps_credentials', JSON.stringify(credentials));
     
-    const updatedUser: User = { ...user, username: newUsername, fullName: newFullName };
+    const updatedUser: User = { ...user, username: newUsername, fullName: newFullName, dni: newDni };
     setUser(updatedUser);
     localStorage.setItem('ps_user', JSON.stringify(updatedUser));
     
-    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Profile updated: ${newFullName}`);
+    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Profile updated: ${newFullName} (DNI: ${newDni})`);
   };
 
   const getAllUsers = () => {
@@ -96,11 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const credentials = credsStr ? JSON.parse(credsStr) : DEFAULT_CREDENTIALS;
     return credentials.map((c: any) => ({ 
       username: c.username, 
-      fullName: c.fullName || c.username 
+      fullName: c.fullName || c.username,
+      dni: c.dni || '00000000'
     }));
   };
 
-  const addUser = (username: string, password: string, fullName: string) => {
+  const addUser = (username: string, password: string, fullName: string, dni: string) => {
     const credsStr = localStorage.getItem('ps_credentials');
     let credentials = credsStr ? JSON.parse(credsStr) : [...DEFAULT_CREDENTIALS];
     
@@ -108,11 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('El ID de usuario ya existe');
     }
 
-    credentials.push({ username, password, fullName });
+    credentials.push({ username, password, fullName, dni });
     localStorage.setItem('ps_credentials', JSON.stringify(credentials));
     
     if (user) {
-      logAuditEvent(user.username, 'CREATE_USER', `New official account created for: ${fullName}`);
+      logAuditEvent(user.username, 'CREATE_USER', `New official account created for: ${fullName} (DNI: ${dni})`);
     }
   };
 
