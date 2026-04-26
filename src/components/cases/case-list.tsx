@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -20,7 +19,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Separator } from '@/components/ui/separator';
 import { logAuditEvent } from '@/lib/audit-logger';
-import { maskDni } from '@/lib/crypto';
+import { maskDni, decryptData } from '@/lib/crypto';
 
 const statusConfig: Record<CaseStatus, { color: string, icon: React.ReactNode }> = {
   'Pendiente': { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -63,7 +62,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   useEffect(() => {
     if (viewingCase && user) {
-      logAuditEvent(user.username, 'VIEW_EXPEDIENT', `Viewed detail of ${viewingCase.caseNumber}`, viewingCase.id);
+      logAuditEvent(user.username, 'VIEW_EXPEDIENT', `Consultó detalle del expediente ${viewingCase.caseNumber}`, viewingCase.id);
     }
   }, [viewingCase, user]);
 
@@ -73,6 +72,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
   const canManageCase = (pCase: PoliceCase) => {
     if (!user) return false;
+    // El superadmin puede todo, los oficiales solo sus propios registros
     return user.username === 'admin1' || pCase.createdByUsername === user.username;
   };
 
@@ -114,23 +114,25 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     setPasswordError(false);
   };
 
-  const confirmAction = () => {
+  const confirmAction = async () => {
     if (!passwordPurpose) return;
-    const credsStr = localStorage.getItem('ps_credentials');
-    const credentials = credsStr ? JSON.parse(credsStr) : [];
+    
+    // Recuperar credenciales cifradas para validación de identidad
+    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
+    const credentials = encryptedCreds ? await decryptData(encryptedCreds) : [];
     const currentCred = credentials.find((c: any) => c.username === user?.username);
 
     if (passwordVerify !== currentCred?.password) {
       setPasswordError(true);
-      toast({ variant: "destructive", title: "Error de Seguridad", description: "Contraseña incorrecta." });
-      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', `Unauthorized ${passwordPurpose} attempt`);
+      toast({ variant: "destructive", title: "Falla de Seguridad", description: "Contraseña de oficial incorrecta." });
+      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', `Intento fallido de ${passwordPurpose} sin autorización`);
       return;
     }
 
     if (passwordPurpose === 'status' && targetStatus) {
       updateCaseStatus(targetStatus.id, targetStatus.status);
-      toast({ title: "Cambio Autorizado", description: "Estado actualizado." });
-      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Status changed to ${targetStatus.status} for ${targetStatus.caseNumber}`, targetStatus.id);
+      toast({ title: "Acción Autorizada", description: "Estado de expediente actualizado." });
+      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Estado cambiado a ${targetStatus.status} para ${targetStatus.caseNumber}`, targetStatus.id);
       onUpdate();
       handleCancelPassword();
     } 
@@ -140,23 +142,23 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     }
     else if (passwordPurpose === 'edit-save' && pendingEditData) {
       updateCase(pendingEditData);
-      toast({ title: "Edición Exitosa", description: "Expediente actualizado." });
-      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Full edit of ${pendingEditData.caseNumber}`, pendingEditData.id);
+      toast({ title: "Edición Consolidada", description: "Datos actualizados en base de datos cifrada." });
+      logAuditEvent(user?.username || 'unknown', 'UPDATE_EXPEDIENT', `Edición completa de ${pendingEditData.caseNumber}`, pendingEditData.id);
       setIsEditingFormOpen(false);
       onUpdate();
       handleCancelPassword();
     }
     else if (passwordPurpose === 'delete' && targetDelete) {
       deleteCase(targetDelete.id);
-      toast({ title: "Expediente Eliminado", description: `El expediente ${targetDelete.caseNumber} ha sido removido.` });
-      logAuditEvent(user?.username || 'unknown', 'DELETE_EXPEDIENT', `Logical deletion of ${targetDelete.caseNumber}`, targetDelete.id);
+      toast({ title: "Eliminación Lógica", description: `El expediente ${targetDelete.caseNumber} ha sido archivado del sistema activo.` });
+      logAuditEvent(user?.username || 'unknown', 'DELETE_EXPEDIENT', `Eliminación lógica de ${targetDelete.caseNumber}`, targetDelete.id);
       onUpdate();
       handleCancelPassword();
     }
   };
 
   const generateIndividualPDF = (c: PoliceCase) => {
-    logAuditEvent(user?.username || 'unknown', 'EXPORT_REPORT', `Individual PDF Export of ${c.caseNumber}`, c.id);
+    logAuditEvent(user?.username || 'unknown', 'EXPORT_REPORT', `Exportación PDF individual de ${c.caseNumber}`, c.id);
     const doc = new jsPDF({
       orientation: 'p',
       unit: 'mm',
@@ -169,6 +171,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
     const lightGray = [248, 250, 252];
     const textColor = [30, 41, 59];
 
+    // Header oficial
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.rect(0, 0, 210, 35, 'F');
 
@@ -248,6 +251,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
       ['HORA APROXIMADA', c.incidentTime]
     ]);
 
+    // Descripción con recuadro
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
     doc.roundedRect(14, y, 182, 22, 1, 1, 'F');
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -264,17 +268,19 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[], onUpdate: (
 
     const pageHeight = doc.internal.pageSize.height;
     
+    // Espacio para firma
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
-    doc.line(70, pageHeight - 35, 140, pageHeight - 35);
+    doc.line(70, pageHeight - 40, 140, pageHeight - 40);
     doc.setTextColor(textColor[0], textColor[1], textColor[2]);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 31, { align: 'center' });
+    doc.text('FIRMA Y SELLO DEL OFICIAL RESPONSABLE', 105, pageHeight - 36, { align: 'center' });
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(c.assignedOfficer, 105, pageHeight - 27, { align: 'center' });
+    doc.text(c.assignedOfficer, 105, pageHeight - 32, { align: 'center' });
 
+    // Footer institucional
     doc.setFillColor(241, 245, 249);
     doc.rect(0, pageHeight - 10, 210, 10, 'F');
     doc.setTextColor(148, 163, 184);

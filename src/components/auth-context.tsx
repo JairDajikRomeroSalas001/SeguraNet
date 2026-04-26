@@ -21,7 +21,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const DEFAULT_CREDENTIALS = [
-  { username: 'admin1', password: 'admin1', fullName: 'MARCO ANTONIO CASAS SOLIS', dni: '98543265' }
+  { 
+    username: 'admin1', 
+    password: 'admin1', 
+    fullName: 'MARCO ANTONIO CASAS SOLIS', 
+    dni: '98543265' 
+  }
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -32,16 +37,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
+      // Inicializar credenciales cifradas si no existen
       const encryptedCreds = localStorage.getItem('ps_credentials_enc');
       if (!encryptedCreds) {
         const encrypted = await encryptData(DEFAULT_CREDENTIALS);
         localStorage.setItem('ps_credentials_enc', encrypted);
       }
 
+      // Recuperar sesión activa
       const storedUserEnc = localStorage.getItem('ps_user_enc');
       const sessionFingerprint = localStorage.getItem('ps_session_fingerprint');
       
       if (storedUserEnc && sessionFingerprint) {
+        // Validación de huella digital de sesión (User-Agent)
         if (navigator.userAgent !== sessionFingerprint) {
           logout();
         } else {
@@ -81,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
     
+    // Protección contra fuerza bruta
     const newAttempts = loginAttempts + 1;
     setLoginAttempts(newAttempts);
     if (newAttempts >= 5) {
