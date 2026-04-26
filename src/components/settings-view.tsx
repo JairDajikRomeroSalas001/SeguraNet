@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth-context';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { User as UserIcon, Lock, Save, AlertTriangle, ShieldCheck, Key, Database, Download, ShieldAlert, BadgeCheck, Fingerprint } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { User as UserIcon, Lock, Save, ShieldCheck, Key, Database, Download, ShieldAlert, BadgeCheck, Fingerprint } from 'lucide-react';
 import { getCases } from '@/lib/store';
 import { logAuditEvent } from '@/lib/audit-logger';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { decryptData } from '@/lib/crypto';
 
 export function SettingsView() {
   const { user, updateCredentials } = useAuth();
@@ -26,7 +26,6 @@ export function SettingsView() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Efecto para sincronizar los estados locales cuando cambie el usuario en el contexto
   useEffect(() => {
     if (user) {
       setNewUsername(user.username);
@@ -35,278 +34,148 @@ export function SettingsView() {
     }
   }, [user]);
 
-  // Estados para Backup
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   const [backupPassword, setBackupPassword] = useState('');
   const [backupError, setBackupError] = useState(false);
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const credsStr = localStorage.getItem('ps_credentials');
-    const credentials = credsStr ? JSON.parse(credsStr) : [];
+    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
+    const credentials = encryptedCreds ? await decryptData(encryptedCreds) : [];
     const currentCred = credentials.find((c: any) => c.username === user?.username);
 
     if (currentPassword !== currentCred?.password) {
       toast({
         variant: "destructive",
         title: "Error de Validación",
-        description: "La contraseña actual ingresada es incorrecta."
+        description: "La contraseña actual es incorrecta."
       });
       return;
     }
 
-    if (newDni.length !== 8 || !/^\d+$/.test(newDni)) {
+    if (newDni.length !== 8) {
       toast({ variant: "destructive", title: "DNI inválido", description: "El DNI debe tener 8 dígitos." });
       return;
     }
 
     if (newPassword && newPassword !== confirmPassword) {
-      toast({
-        variant: "destructive",
-        title: "Error de Contraseña",
-        description: "La nueva contraseña y su confirmación no coinciden."
-      });
+      toast({ variant: "destructive", title: "Error", description: "Las contraseñas no coinciden." });
       return;
     }
 
     setIsUpdating(true);
+    await updateCredentials(newUsername, newPassword || currentPassword, newFullName, newDni);
+    setIsUpdating(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
     
-    setTimeout(() => {
-      updateCredentials(newUsername, newPassword || currentPassword, newFullName, newDni);
-      setIsUpdating(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
-      toast({
-        title: "Perfil Actualizado",
-        description: "Sus credenciales oficiales han sido modificadas correctamente."
-      });
-    }, 1000);
+    toast({ title: "Perfil Actualizado", description: "Cambios guardados exitosamente." });
   };
 
-  const handleNumericInput = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
-    const value = e.target.value.replace(/\D/g, '');
-    setter(value);
-  };
-
-  const handleBackupRequest = () => {
-    setIsBackupDialogOpen(true);
-    setBackupPassword('');
-    setBackupError(false);
-  };
-
-  const confirmBackup = () => {
-    const credsStr = localStorage.getItem('ps_credentials');
-    const credentials = credsStr ? JSON.parse(credsStr) : [];
+  const confirmBackup = async () => {
+    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
+    const credentials = encryptedCreds ? await decryptData(encryptedCreds) : [];
     const currentCred = credentials.find((c: any) => c.username === user?.username);
 
     if (backupPassword !== currentCred?.password) {
       setBackupError(true);
-      toast({
-        variant: "destructive",
-        title: "Autorización Denegada",
-        description: "Contraseña de administrador incorrecta."
-      });
-      logAuditEvent(user?.username || 'unknown', 'SECURITY_VIOLATION', 'Intento fallido de descargar backup');
       return;
     }
 
-    try {
-      const cases = getCases(true); 
-      const auditLogs = JSON.parse(localStorage.getItem('ps_audit_logs') || '[]');
-      
-      const backupData = {
-        sistema: "Paucartambo Segura v2.0",
-        fecha_respaldo: new Date().toISOString(),
-        oficial_responsable: user?.fullName,
-        base_de_datos: {
-          expedientes: cases,
-          logs_auditoria: auditLogs
-        }
-      };
+    const cases = getCases(true); 
+    const logs = JSON.parse(localStorage.getItem('ps_audit_logs') || '[]');
+    
+    const backupData = {
+      version: "2.0",
+      timestamp: new Date().toISOString(),
+      officer: user?.fullName,
+      data: { expedientes: cases, auditoria: logs }
+    };
 
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `RESPALDO_SISTEMA_${format(new Date(), 'yyyyMMdd_HHmm')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `BACKUP_SEGURANET_${format(new Date(), 'yyyyMMdd_HHmm')}.json`;
+    link.click();
 
-      logAuditEvent(user?.username || 'unknown', 'SYSTEM_BACKUP', 'Backup completo generado');
-      
-      toast({
-        title: "Respaldo Generado",
-        description: "La copia de seguridad se ha descargado correctamente."
-      });
-      
-      setIsBackupDialogOpen(false);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error de Sistema",
-        description: "No se pudo generar el respaldo de datos."
-      });
-    }
+    logAuditEvent(user?.username || 'unknown', 'SYSTEM_BACKUP', 'Copia de seguridad generada');
+    setIsBackupDialogOpen(false);
+    toast({ title: "Respaldo Listo", description: "Archivo descargado." });
   };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-12">
       <Card className="shadow-xl border-primary/10 overflow-hidden rounded-2xl">
-        <CardHeader className="bg-primary text-white py-6">
-          <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
-            <Key className="h-5 w-5" /> Seguridad de Cuenta
-          </CardTitle>
-          <CardDescription className="text-white/80 font-medium">
-            Actualice sus datos y credenciales oficiales.
-          </CardDescription>
+        <CardHeader className="bg-primary text-white">
+          <CardTitle className="flex items-center gap-2 text-xl font-black uppercase"><Key className="h-5 w-5" /> Mi Perfil Oficial</CardTitle>
+          <CardDescription className="text-white/80">Actualice sus datos de identidad y acceso.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8">
           <form onSubmit={handleUpdate} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="new-fullname" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombres y Apellidos Completos</Label>
+              <div className="md:col-span-2">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nombres y Apellidos</Label>
                 <div className="relative">
                   <BadgeCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                  <Input 
-                    id="new-fullname"
-                    value={newFullName}
-                    onChange={(e) => setNewFullName(e.target.value)}
-                    className="pl-10 h-11 rounded-xl font-bold"
-                  />
+                  <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value.toUpperCase())} className="pl-10 h-11 font-bold" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-dni" className="text-[10px] font-black uppercase text-muted-foreground ml-1">DNI (8 dígitos)</Label>
+              <div>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">DNI</Label>
                 <div className="relative">
                   <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                  <Input 
-                    id="new-dni"
-                    value={newDni}
-                    maxLength={8}
-                    onChange={(e) => handleNumericInput(e, setNewDni)}
-                    className="pl-10 h-11 rounded-xl font-bold"
-                  />
+                  <Input value={newDni} maxLength={8} onChange={(e) => setNewDni(e.target.value.replace(/\D/g, ''))} className="pl-10 h-11 font-bold" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-username" className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID / Usuario (Login)</Label>
+              <div>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">ID Usuario</Label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                  <Input 
-                    id="new-username"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    className="pl-10 h-11 rounded-xl font-bold"
-                  />
+                  <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="pl-10 h-11 font-bold" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="current-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña Actual</Label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                  <Input 
-                    id="current-pass"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="pl-10 h-11 rounded-xl font-bold"
-                    placeholder="Ingrese su clave para confirmar cambios"
-                  />
-                </div>
+              <div>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña Actual</Label>
+                <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="h-11 font-bold" placeholder="Requerido para cambios" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-pass" className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nueva Contraseña (Opcional)</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                  <Input 
-                    id="new-pass"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="pl-10 h-11 rounded-xl font-bold"
-                    placeholder="En blanco para no cambiar"
-                  />
-                </div>
+              <div>
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nueva Contraseña</Label>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-11 font-bold" placeholder="Opcional" />
               </div>
             </div>
-
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 h-12 font-black text-xs uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-primary/20"
-              disabled={isUpdating}
-            >
-              {isUpdating ? 'PROCESANDO CAMBIO...' : 'ACTUALIZAR DATOS OFICIALES'}
+            <Button type="submit" className="w-full h-12 font-black text-xs uppercase tracking-widest" disabled={isUpdating}>
+              {isUpdating ? 'GUARDANDO...' : 'ACTUALIZAR DATOS OFICIALES'}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="shadow-xl border-amber-200 overflow-hidden rounded-2xl bg-amber-50/30">
-        <CardHeader className="bg-amber-600 text-white py-6">
-          <CardTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
-            <Database className="h-5 w-5" /> Mantenimiento de Datos
-          </CardTitle>
-          <CardDescription className="text-white/80 font-medium">
-            Respaldo y cumplimiento de auditoría estatal.
-          </CardDescription>
+      <Card className="shadow-xl border-amber-200 bg-amber-50/30 overflow-hidden rounded-2xl">
+        <CardHeader className="bg-amber-600 text-white">
+          <CardTitle className="flex items-center gap-2 uppercase"><Database className="h-5 w-5" /> Mantenimiento</CardTitle>
         </CardHeader>
-        <CardContent className="pt-8 space-y-6">
-          <div className="flex flex-col md:flex-row gap-6 items-center">
-            <div className="p-4 bg-amber-100 rounded-2xl border border-amber-200 flex-1">
-              <div className="flex items-center gap-2 mb-2 text-amber-800">
-                <ShieldAlert className="h-4 w-4" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Protocolo de Respaldo</span>
-              </div>
-              <p className="text-[11px] text-amber-700 leading-tight font-medium">
-                Esta opción genera una copia íntegra del sistema. Toda descarga quedará registrada en el log de auditoría.
-              </p>
-            </div>
-            <Button 
-              onClick={handleBackupRequest}
-              className="bg-amber-600 hover:bg-amber-700 h-14 px-8 font-black text-xs uppercase tracking-widest gap-2 rounded-xl shadow-lg shadow-amber-600/20 w-full md:w-auto"
-            >
-              <Download className="h-5 w-5" /> DESCARGAR COPIA DE SEGURIDAD
-            </Button>
-          </div>
+        <CardContent className="pt-8 flex flex-col md:flex-row gap-6 items-center">
+          <p className="text-xs font-medium text-amber-800 flex-1">Generar respaldo íntegro de expedientes y logs para auditoría estatal.</p>
+          <Button onClick={() => setIsBackupDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700 h-12 px-8 font-black text-xs uppercase gap-2">
+            <Download className="h-4 w-4" /> RESPALDO COMPLETO
+          </Button>
         </CardContent>
       </Card>
 
       <Dialog open={isBackupDialogOpen} onOpenChange={setIsBackupDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl">
+        <DialogContent className="rounded-3xl">
           <DialogHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-              <ShieldCheck className="h-6 w-6 text-amber-600" />
-            </div>
-            <DialogTitle className="text-xl font-black text-amber-800 uppercase">Autorizar Respaldo</DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase pt-2">
-              Valide su identidad para exportar la base de datos.
-            </DialogDescription>
+            <DialogTitle className="text-xl font-black uppercase text-amber-800">Autorizar Descarga</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contraseña Oficial</Label>
-              <Input 
-                type="password"
-                placeholder="Confirme su contraseña"
-                className={`h-11 rounded-xl text-center font-bold ${backupError ? "border-destructive" : ""}`}
-                value={backupPassword}
-                onChange={(e) => setBackupPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && confirmBackup()}
-              />
-            </div>
+          <div className="py-4 space-y-4">
+            <Label className="text-[10px] font-black uppercase text-muted-foreground">Contraseña de Oficial</Label>
+            <Input type="password" value={backupPassword} onChange={(e) => setBackupPassword(e.target.value)} className={`h-11 font-bold ${backupError ? "border-destructive" : ""}`} />
           </div>
-          <DialogFooter className="flex-col sm:flex-col gap-2">
-            <Button 
-              onClick={confirmBackup} 
-              className="w-full bg-amber-600 hover:bg-amber-700 h-11 text-xs font-black uppercase rounded-xl"
-            >
-              VALIDAR Y DESCARGAR
-            </Button>
-            <Button variant="ghost" onClick={() => setIsBackupDialogOpen(false)} className="text-[10px] font-bold uppercase">Cancelar</Button>
+          <DialogFooter>
+            <Button onClick={confirmBackup} className="w-full bg-amber-600 h-11 font-black uppercase">VALIDAR Y DESCARGAR</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

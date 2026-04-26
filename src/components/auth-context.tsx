@@ -38,10 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       // Inicializar credenciales cifradas si no existen
-      const encryptedCreds = localStorage.getItem('ps_credentials_enc');
+      let encryptedCreds = localStorage.getItem('ps_credentials_enc');
       if (!encryptedCreds) {
         const encrypted = await encryptData(DEFAULT_CREDENTIALS);
         localStorage.setItem('ps_credentials_enc', encrypted);
+        encryptedCreds = encrypted;
       }
 
       // Recuperar sesión activa
@@ -49,7 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sessionFingerprint = localStorage.getItem('ps_session_fingerprint');
       
       if (storedUserEnc && sessionFingerprint) {
-        // Validación de huella digital de sesión (User-Agent)
         if (navigator.userAgent !== sessionFingerprint) {
           logout();
         } else {
@@ -85,20 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('ps_user_enc', encryptedUser);
       localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
       
-      logAuditEvent(newUser.username, 'LOGIN', `Sesión segura iniciada por ${newUser.fullName}`);
+      logAuditEvent(newUser.username, 'LOGIN', `Sesión iniciada por oficial: ${newUser.fullName}`);
       return true;
     }
     
-    // Protección contra fuerza bruta
     const newAttempts = loginAttempts + 1;
     setLoginAttempts(newAttempts);
     if (newAttempts >= 5) {
       setIsLocked(true);
-      logAuditEvent(username, 'SECURITY_VIOLATION', 'Cuenta bloqueada temporalmente por múltiples intentos fallidos');
-      setTimeout(() => setIsLocked(false), 300000); // 5 min de bloqueo
+      logAuditEvent(username, 'SECURITY_VIOLATION', 'Cuenta bloqueada por múltiples intentos fallidos');
+      setTimeout(() => setIsLocked(false), 300000); 
     }
     
-    logAuditEvent(username, 'SECURITY_VIOLATION', `Intento de login fallido (${newAttempts}/5)`);
     return false;
   };
 
@@ -123,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const encryptedUser = await encryptData(updatedUser);
     localStorage.setItem('ps_user_enc', encryptedUser);
     
-    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Perfil actualizado y cifrado`);
+    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Perfil oficial actualizado y cifrado`);
   };
 
   const getAllUsers = async () => {
@@ -149,11 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ps_credentials_enc', encryptedNewCreds);
     
     if (user) {
-      logAuditEvent(user.username, 'CREATE_USER', `Nueva cuenta oficial cifrada para: ${fullName}`);
+      logAuditEvent(user.username, 'CREATE_USER', `Alta de oficial: ${fullName}`);
     }
   };
 
   const deleteUser = async (username: string) => {
+    if (username === 'admin1') throw new Error('No se puede eliminar la cuenta raíz');
     if (user?.username === username) throw new Error('No puedes eliminar tu propia cuenta');
 
     const encryptedCreds = localStorage.getItem('ps_credentials_enc');
@@ -164,13 +163,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('ps_credentials_enc', encryptedNewCreds);
     
     if (user) {
-      logAuditEvent(user.username, 'DELETE_USER', `Cuenta oficial revocada: ${username}`);
+      logAuditEvent(user.username, 'DELETE_USER', `Baja de oficial: ${username}`);
     }
   };
 
   const logout = () => {
     if (user) {
-      logAuditEvent(user.username, 'LOGOUT', 'Sesión cerrada de forma segura');
+      logAuditEvent(user.username, 'LOGOUT', 'Sesión cerrada');
     }
     setUser(null);
     localStorage.removeItem('ps_user_enc');
