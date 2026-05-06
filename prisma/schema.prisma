@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Roles válidos: superadmin | oficial_operativo | auditor | readonly
+// SQLite no soporta enums; se valida en la capa Zod de los endpoints.
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  passwordHash  String
+  fullName      String    // cifrado AES-256-GCM (base64)
+  dni           String    // cifrado AES-256-GCM (base64)
+  role          String
+  isActive      Boolean   @default(true)
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  cases     Case[]     @relation("CaseCreator")
+  documents Document[] @relation("DocumentUploader")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+// Estado del caso: Pendiente | En Proceso | Resuelto | Cerrado | Archivado
+// Riesgo:        Leve | Moderado | Severo | Muy Severo
+model Case {
+  id              String @id @default(uuid())
+  caseNumber      String @unique
+  assignedOfficer String
+  origin          String
+  entryDate       String
+  entryTime       String
+
+  // Víctima (campos cifrados marcados con // 🔒)
+  victimName      String // 🔒
+  victimDni       String // 🔒
+  victimPhone     String // 🔒
+  victimStreet    String // 🔒
+  victimNumber    String // 🔒
+  victimDistrict  String
+  victimReference String // 🔒
+
+  // Agresor
+  aggressorName      String // 🔒
+  aggressorDni       String // 🔒
+  aggressorPhone     String // 🔒
+  aggressorStreet    String // 🔒
+  aggressorNumber    String // 🔒
+  aggressorDistrict  String
+  aggressorReference String // 🔒
+
+  violenceType           String
+  riskLevel              String
+  incidentDescription    String // 🔒
+  incidentDate           String
+  incidentTime           String
+  incidentLocation       String // 🔒
+  riskFactors            String @default("[]") // JSON array
+  additionalObservations String @default("")   // 🔒
+  status                 String @default("Pendiente")
+  tags                   String @default("[]") // JSON array
+
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+  integrityHash String
+
+  createdByUid      String
+  createdByUsername String
+  createdBy         User   @relation("CaseCreator", fields: [createdByUid], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+
+  @@index([createdByUid])
+  @@index([status])
+  @@index([isDeleted])
+  @@index([createdAt])
+}
+
+// Estado del documento: pending | ready | failed
+model Document {
+  id            String @id @default(uuid())
+  caseId        String
+  uploadedByUid String
+
+  filename      String
+  mimeType      String
+  sizeBytes     Int
+  documentType  String
+  description   String @default("")
+  status        String @default("pending")
+  storagePath   String
+  integrityHash String @default("")
+
+  uploadedAt DateTime  @default(now())
+  isDeleted  Boolean   @default(false)
+  deletedAt  DateTime?
+
+  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("DocumentUploader", fields: [uploadedByUid], references: [id])
+
+  @@index([caseId])
+  @@index([isDeleted])
+  @@index([status])
+}
+
+model AuditLog {
+  id              String   @id @default(uuid())
+  timestamp       DateTime @default(now())
+  officerUid      String
+  officerUsername String
+  action          String
+  resourceId      String?
+  details         String   @default("")
+  userAgent       String   @default("")
+  ipAddress       String   @default("")
+  hmacSignature   String
+
+  @@index([timestamp])
+  @@index([officerUid])
+  @@index([action])
+}
+
+model RateLimit {
+  key          String    @id
+  count        Int       @default(0)
+  windowStart  DateTime  @default(now())
+  blockedUntil DateTime?
+  updatedAt    DateTime  @updatedAt
+}

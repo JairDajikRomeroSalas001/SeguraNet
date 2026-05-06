@@ -30,6 +30,14 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# Datos locales (SQLite + uploads)
+prisma/seguranet.db*
+prisma/migrations/
+seguranet.db
+seguranet.db-journal
+uploads/*
+!uploads/.gitkeep
+
 # Firebase
 .firebase/
 apphosting.yaml

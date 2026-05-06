@@ -1,194 +1,83 @@
-"use client"
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
-import { logAuditEvent } from '@/lib/audit-logger';
-import { encryptData, decryptData } from '@/lib/crypto';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { api, ApiError } from '@/lib/api-client';
+import type { Role, SessionUser } from '@/lib/types';
 
 interface AuthContextType {
-  user: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  updateCredentials: (newUsername: string, newPassword: string, newFullName: string, newDni: string) => Promise<void>;
-  getAllUsers: () => Promise<{ username: string, fullName: string, dni: string }[]>;
-  addUser: (username: string, password: string, fullName: string, dni: string) => Promise<void>;
-  deleteUser: (username: string) => Promise<void>;
+  user: SessionUser | null;
   isLoading: boolean;
-  loginAttempts: number;
   isLocked: boolean;
+  loginAttempts: number;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEFAULT_CREDENTIALS = [
-  { 
-    username: 'admin1', 
-    password: 'admin1', 
-    fullName: 'MARCO ANTONIO CASAS SOLIS', 
-    dni: '98543265' 
-  }
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      // Inicializar credenciales cifradas si no existen
-      let encryptedCreds = localStorage.getItem('ps_credentials_enc');
-      if (!encryptedCreds) {
-        const encrypted = await encryptData(DEFAULT_CREDENTIALS);
-        localStorage.setItem('ps_credentials_enc', encrypted);
-        encryptedCreds = encrypted;
-      }
-
-      // Recuperar sesión activa
-      const storedUserEnc = localStorage.getItem('ps_user_enc');
-      const sessionFingerprint = localStorage.getItem('ps_session_fingerprint');
-      
-      if (storedUserEnc && sessionFingerprint) {
-        if (navigator.userAgent !== sessionFingerprint) {
-          logout();
-        } else {
-          const decryptedUser = await decryptData(storedUserEnc);
-          if (decryptedUser) setUser(decryptedUser);
-        }
-      }
-      setIsLoading(false);
-    };
-    initAuth();
+  const refresh = useCallback(async () => {
+    try {
+      const { user } = await api.get<{ user: SessionUser | null }>('/api/auth/session');
+      setUser(user);
+    } catch {
+      setUser(null);
+    }
   }, []);
 
-  const login = async (username: string, password: string) => {
+  useEffect(() => {
+    (async () => {
+      await refresh();
+      setIsLoading(false);
+    })();
+  }, [refresh]);
+
+  const login = useCallback(async (username: string, password: string) => {
     if (isLocked) return false;
-
-    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
-    const credentials = encryptedCreds ? await decryptData(encryptedCreds) : DEFAULT_CREDENTIALS;
-
-    const found = credentials.find((c: any) => c.username === username && c.password === password);
-    
-    if (found) {
-      const newUser: User = { 
-        username: found.username, 
-        fullName: found.fullName, 
-        dni: found.dni,
-        role: 'admin' 
-      };
-      
-      setUser(newUser);
+    try {
+      const { user } = await api.post<{ user: SessionUser }>('/api/auth/login', { username, password });
+      setUser(user);
       setLoginAttempts(0);
-      
-      const encryptedUser = await encryptData(newUser);
-      localStorage.setItem('ps_user_enc', encryptedUser);
-      localStorage.setItem('ps_session_fingerprint', navigator.userAgent);
-      
-      logAuditEvent(newUser.username, 'LOGIN', `Sesión iniciada por oficial: ${newUser.fullName}`);
       return true;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setIsLocked(true);
+        setTimeout(() => setIsLocked(false), 30 * 60 * 1000);
+        return false;
+      }
+      setLoginAttempts(n => n + 1);
+      return false;
     }
-    
-    const newAttempts = loginAttempts + 1;
-    setLoginAttempts(newAttempts);
-    if (newAttempts >= 5) {
-      setIsLocked(true);
-      logAuditEvent(username, 'SECURITY_VIOLATION', 'Cuenta bloqueada por múltiples intentos fallidos');
-      setTimeout(() => setIsLocked(false), 300000); 
-    }
-    
-    return false;
-  };
+  }, [isLocked]);
 
-  const updateCredentials = async (newUsername: string, newPassword: string, newFullName: string, newDni: string) => {
-    if (!user) return;
-
-    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
-    let credentials = encryptedCreds ? await decryptData(encryptedCreds) : [...DEFAULT_CREDENTIALS];
-
-    credentials = credentials.map((c: any) => 
-      c.username === user.username 
-        ? { username: newUsername, password: newPassword, fullName: newFullName, dni: newDni } 
-        : c
-    );
-
-    const encryptedNewCreds = await encryptData(credentials);
-    localStorage.setItem('ps_credentials_enc', encryptedNewCreds);
-    
-    const updatedUser: User = { ...user, username: newUsername, fullName: newFullName, dni: newDni };
-    setUser(updatedUser);
-    
-    const encryptedUser = await encryptData(updatedUser);
-    localStorage.setItem('ps_user_enc', encryptedUser);
-    
-    logAuditEvent(user.username, 'UPDATE_CREDENTIALS', `Perfil oficial actualizado y cifrado`);
-  };
-
-  const getAllUsers = async () => {
-    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
-    const credentials = encryptedCreds ? await decryptData(encryptedCreds) : DEFAULT_CREDENTIALS;
-    return credentials.map((c: any) => ({ 
-      username: c.username, 
-      fullName: c.fullName,
-      dni: c.dni
-    }));
-  };
-
-  const addUser = async (username: string, password: string, fullName: string, dni: string) => {
-    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
-    let credentials = encryptedCreds ? await decryptData(encryptedCreds) : [...DEFAULT_CREDENTIALS];
-    
-    if (credentials.find((c: any) => c.username === username)) {
-      throw new Error('El ID de usuario ya existe');
-    }
-
-    credentials.push({ username, password, fullName, dni });
-    const encryptedNewCreds = await encryptData(credentials);
-    localStorage.setItem('ps_credentials_enc', encryptedNewCreds);
-    
-    if (user) {
-      logAuditEvent(user.username, 'CREATE_USER', `Alta de oficial: ${fullName}`);
-    }
-  };
-
-  const deleteUser = async (username: string) => {
-    if (username === 'admin1') throw new Error('No se puede eliminar la cuenta raíz');
-    if (user?.username === username) throw new Error('No puedes eliminar tu propia cuenta');
-
-    const encryptedCreds = localStorage.getItem('ps_credentials_enc');
-    let credentials = encryptedCreds ? await decryptData(encryptedCreds) : [...DEFAULT_CREDENTIALS];
-
-    credentials = credentials.filter((c: any) => c.username !== username);
-    const encryptedNewCreds = await encryptData(credentials);
-    localStorage.setItem('ps_credentials_enc', encryptedNewCreds);
-    
-    if (user) {
-      logAuditEvent(user.username, 'DELETE_USER', `Baja de oficial: ${username}`);
-    }
-  };
-
-  const logout = () => {
-    if (user) {
-      logAuditEvent(user.username, 'LOGOUT', 'Sesión cerrada');
-    }
+  const logout = useCallback(async () => {
+    try { await api.post('/api/auth/logout'); } catch { /* ignore */ }
     setUser(null);
-    localStorage.removeItem('ps_user_enc');
-    localStorage.removeItem('ps_session_fingerprint');
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, login, logout, updateCredentials, getAllUsers, addUser, deleteUser, isLoading, loginAttempts, isLocked 
-    }}>
+    <AuthContext.Provider value={{ user, isLoading, isLocked, loginAttempts, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');
+  return ctx;
+}
+
+export function useRole(): Role | null {
+  return useAuth().user?.role ?? null;
+}
+
+export function useIsSuperadmin(): boolean {
+  return useAuth().user?.role === 'superadmin';
 }

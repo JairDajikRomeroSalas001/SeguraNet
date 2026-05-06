@@ -1,81 +1,36 @@
+import { api } from './api-client';
+import type { CaseStatus, PoliceCase } from './types';
 
-import { PoliceCase, CaseStatus } from './types';
+type CaseCreateInput = Omit<
+  PoliceCase,
+  'id' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'deletedAt' |
+  'integrityHash' | 'createdByUid' | 'createdByUsername' | 'status'
+> & { status?: CaseStatus };
 
-let cases: PoliceCase[] = [
-  {
-    id: '1',
-    caseNumber: 'EXP-2024-001',
-    assignedOfficer: 'MARCO ANTONIO CASAS SOLIS',
-    createdByUsername: 'admin1',
-    origin: 'Denuncia Directa',
-    entryDate: '2024-05-15',
-    entryTime: '10:30:00',
-    victim: {
-      name: 'JUAN PEREZ MENDOZA',
-      dni: '12345678',
-      phone: '987654321',
-      street: 'Av. Sol',
-      number: '123',
-      district: 'Paucartambo',
-      reference: 'Frente al parque'
-    },
-    aggressor: {
-      name: 'DESCONOCIDO',
-      dni: '00000000',
-      phone: 'N/A',
-      street: 'N/A',
-      number: 'N/A',
-      district: 'N/A',
-      reference: 'N/A'
-    },
-    violenceType: 'Violencia física',
-    riskLevel: 'Leve',
-    incidentDescription: 'Agresión verbal y física leve reportada en la vía pública.',
-    incidentDate: '2024-05-15',
-    incidentTime: '10:15',
-    incidentLocation: 'Plaza de Armas de Paucartambo',
-    riskFactors: ['antecedentes_violencia'],
-    additionalObservations: 'La víctima solicita medidas de protección.',
-    status: 'Pendiente',
-    tags: ['Violencia física', 'Leve'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
+export async function fetchCases(): Promise<PoliceCase[]> {
+  const { cases } = await api.get<{ cases: PoliceCase[] }>('/api/cases');
+  return cases;
+}
 
-export const getCases = (includeDeleted = false) => 
-  includeDeleted ? [...cases] : cases.filter(c => !c.isDeleted);
+export async function fetchCase(id: string): Promise<PoliceCase> {
+  const { case: c } = await api.get<{ case: PoliceCase }>(`/api/cases/${id}`);
+  return c;
+}
 
-export const addCase = (newCaseData: Omit<PoliceCase, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const nextId = Math.random().toString(36).substring(2, 9);
-  
-  const createdCase: PoliceCase = {
-    ...newCaseData,
-    id: nextId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  
-  cases = [createdCase, ...cases];
-  return createdCase;
-};
+export async function createCase(input: CaseCreateInput): Promise<PoliceCase> {
+  const { case: c } = await api.post<{ case: PoliceCase }>('/api/cases', input);
+  return c;
+}
 
-export const updateCase = (updatedCase: PoliceCase) => {
-  cases = cases.map((c) => 
-    c.id === updatedCase.id 
-      ? { ...updatedCase, updatedAt: new Date().toISOString() } 
-      : c
-  );
-};
+export async function updateCase(id: string, data: Partial<PoliceCase>, passwordConfirm: string): Promise<PoliceCase> {
+  const { case: c } = await api.put<{ case: PoliceCase }>(`/api/cases/${id}`, { data, passwordConfirm });
+  return c;
+}
 
-export const updateCaseStatus = (id: string, status: CaseStatus) => {
-  cases = cases.map((c) => 
-    c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c
-  );
-};
+export async function updateCaseStatus(id: string, status: CaseStatus, passwordConfirm: string): Promise<void> {
+  await api.patch(`/api/cases/${id}/status`, { status, passwordConfirm });
+}
 
-export const deleteCase = (id: string) => {
-  cases = cases.map((c) => 
-    c.id === id ? { ...c, isDeleted: true, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : c
-  );
-};
+export async function deleteCase(id: string, passwordConfirm: string): Promise<void> {
+  await api.delete(`/api/cases/${id}`, { passwordConfirm });
+}
