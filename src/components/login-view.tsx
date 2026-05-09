@@ -31,7 +31,7 @@ export function LoginView() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 relative overflow-hidden">
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
 
@@ -50,7 +50,7 @@ export function LoginView() {
           </div>
         </div>
 
-        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] backdrop-blur-sm bg-white/90">
+        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-sm bg-card/95">
           <CardHeader className="space-y-1 pb-4 text-center border-b bg-muted/30 rounded-t-lg">
             <CardTitle className="text-lg">Acceso Restringido</CardTitle>
             <CardDescription className="text-xs">Personal policial autorizado únicamente</CardDescription>

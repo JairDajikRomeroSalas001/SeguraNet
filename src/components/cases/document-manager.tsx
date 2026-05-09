@@ -136,7 +136,7 @@ export function DocumentManager({ caseId }: { caseId: string }) {
           <p className="text-xs text-muted-foreground text-center py-3">Sin documentos adjuntos</p>
         ) : (
           docs.map(d => (
-            <div key={d.id} className="flex items-center justify-between bg-white p-3 rounded-lg border">
+            <div key={d.id} className="flex items-center justify-between bg-card p-3 rounded-lg border">
               <div className="flex items-center gap-3 min-w-0">
                 <FileIcon className="h-4 w-4 text-primary shrink-0" />
                 <div className="min-w-0">

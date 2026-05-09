@@ -10,6 +10,8 @@ export interface PersonData {
   street: string;
   number: string;
   district: string;
+  annex: string;
+  community: string;
   reference: string;
 }
 
@@ -24,7 +26,7 @@ export interface PoliceCase {
   entryTime: string;
   victim: PersonData;
   aggressor: PersonData;
-  violenceType: string;
+  violenceType: string[];
   riskLevel: RiskLevel;
   incidentDescription: string;
   incidentDate: string;

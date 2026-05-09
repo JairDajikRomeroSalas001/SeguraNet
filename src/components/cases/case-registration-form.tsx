@@ -31,6 +31,8 @@ const personSchema = z.object({
   street: z.string().min(1, 'Calle requerida'),
   number: z.string().min(1, 'Número requerido'),
   district: z.string().min(1, 'Distrito requerido'),
+  annex: z.string().optional().default(''),
+  community: z.string().optional().default(''),
   reference: z.string().optional().default(''),
 });
 
@@ -42,7 +44,7 @@ const caseSchema = z.object({
   entryTime: z.string().min(1),
   victim: personSchema,
   aggressor: personSchema,
-  violenceType: z.string().min(1),
+  violenceType: z.array(z.string()).min(1, 'Seleccione al menos un tipo'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
   incidentDescription: z.string().min(1),
   incidentDate: z.string().min(1),
@@ -55,7 +57,6 @@ const caseSchema = z.object({
 type FormData = z.infer<typeof caseSchema>;
 
 const originOptions = [
-  'Centro de Emergencia Mujer', 'Demuna Municipal', 'Denuncia Directa', 'Hospital Regional',
   'Juez de Paz', 'Juzgado de Familia', 'Juzgado Especializado de Familia', 'Juzgado Mixto',
 ].sort();
 
@@ -138,10 +139,18 @@ const PersonFormFields = ({
           <FormItem><FormLabel>Número</FormLabel><FormControl><Input placeholder="123 o S/N" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField control={form.control} name={`${type}.district`} render={({ field }) => (
           <FormItem><FormLabel>Distrito</FormLabel><FormControl><Input placeholder="Paucartambo" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
+        <FormField control={form.control} name={`${type}.annex`} render={({ field }) => (
+          <FormItem><FormLabel>Anexo</FormLabel><FormControl><Input placeholder="Ej: Anexo 10" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name={`${type}.community`} render={({ field }) => (
+          <FormItem><FormLabel>Comunidad</FormLabel><FormControl><Input placeholder="Ej: Comunidad Campesina" {...field} /></FormControl><FormMessage /></FormItem>
+        )} />
+      </div>
+      <div className="grid grid-cols-1 gap-4">
         <FormField control={form.control} name={`${type}.reference`} render={({ field }) => (
           <FormItem><FormLabel className="flex items-center gap-2"><Map className="h-3 w-3" /> Referencia</FormLabel><FormControl><Input placeholder="Ej: Cerca al mercado" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
@@ -176,9 +185,9 @@ export function CaseRegistrationForm({
       origin: '',
       entryDate: new Date().toISOString().split('T')[0],
       entryTime: getCurrentTime(),
-      victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
-      aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', reference: '' },
-      violenceType: '',
+      victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', annex: '', community: '', reference: '' },
+      aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', annex: '', community: '', reference: '' },
+      violenceType: [],
       riskLevel: 'Leve',
       incidentDescription: '',
       incidentDate: new Date().toISOString().split('T')[0],
@@ -227,9 +236,9 @@ export function CaseRegistrationForm({
     setIsSubmitting(true);
     try {
       if (isEditing) {
-        onCaseAdded({ ...initialData!, ...values, tags: [values.violenceType, values.riskLevel] });
+        onCaseAdded({ ...initialData!, ...values, tags: [...values.violenceType, values.riskLevel] });
       } else {
-        await createCase({ ...values, tags: [values.violenceType, values.riskLevel] } as any);
+        await createCase({ ...values, tags: [...values.violenceType, values.riskLevel] } as any);
         toast({ title: 'Expediente registrado', description: `${values.caseNumber} guardado.` });
         onCaseAdded();
       }
@@ -314,11 +323,22 @@ export function CaseRegistrationForm({
                 <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2 border-b pb-2"><ShieldAlert className="h-4 w-4" /> Paso 3: Clasificación</h3>
                 <FormField control={form.control} name="violenceType" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /> Tipo de Violencia</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Seleccione" /></SelectTrigger></FormControl>
-                      <SelectContent>{violenceOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <FormLabel className="flex items-center gap-2 font-bold uppercase tracking-tight text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4 text-amber-600" /> Tipo de Violencia</FormLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border p-4 rounded-xl bg-muted/20">
+                      {violenceOptions.map(option => (
+                        <FormItem key={option.value} className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(option.value)}
+                              onCheckedChange={checked => checked
+                                ? field.onChange([...(field.value ?? []), option.value])
+                                : field.onChange(field.value?.filter(v => v !== option.value))}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal cursor-pointer">{option.label}</FormLabel>
+                        </FormItem>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )} />

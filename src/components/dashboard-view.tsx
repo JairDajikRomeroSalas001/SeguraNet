@@ -11,9 +11,10 @@ import { fetchCases } from '@/lib/store';
 import {
   LayoutDashboard, FilePlus, LogOut, User as UserIcon,
   Download, FileText, FileSpreadsheet, Settings, ChevronDown, Users, Loader2,
-  Facebook, Instagram,
+  Facebook, Instagram, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from './auth-context';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { PoliceCase } from '@/lib/types';
 import { isWithinInterval, parseISO, startOfDay, endOfDay, format } from 'date-fns';
@@ -43,6 +44,7 @@ const TikTokIcon = ({ className }: { className?: string }) => (
 export function DashboardView() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('panel');
   const [allCases, setAllCases] = useState<PoliceCase[]>([]);
   const [filteredCases, setFilteredCases] = useState<PoliceCase[]>([]);
@@ -70,7 +72,7 @@ export function DashboardView() {
     }
     if (f.status !== 'all') result = result.filter(c => c.status === f.status);
     if (f.riskLevel !== 'all') result = result.filter(c => c.riskLevel === f.riskLevel);
-    if (f.violenceType !== 'all') result = result.filter(c => c.violenceType === f.violenceType);
+    if (f.violenceType !== 'all') result = result.filter(c => c.violenceType.includes(f.violenceType));
     if (f.startDate || f.endDate) {
       result = result.filter(c => {
         const d = parseISO(c.entryDate);
@@ -113,7 +115,7 @@ export function DashboardView() {
     const headers = ['EXPEDIENTE', 'OFICIAL', 'VICTIMA', 'AGRESOR', 'TIPO_VIOLENCIA', 'RIESGO', 'ESTADO', 'FECHA'];
     const rows = filteredCases.map(c => [
       `"${c.caseNumber}"`, `"${c.assignedOfficer}"`, `"${c.victim.name}"`, `"${c.aggressor.name}"`,
-      `"${c.violenceType}"`, `"${c.riskLevel}"`, `"${c.status}"`, `"${c.entryDate}"`,
+      `"${c.violenceType.join(' | ')}"`, `"${c.riskLevel}"`, `"${c.status}"`, `"${c.entryDate}"`,
     ].join(','));
     const csv = '﻿' + 'sep=,\n' + headers.join(',') + '\n' + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -137,7 +139,7 @@ export function DashboardView() {
     doc.text(`REPORTE GENERADO: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | OFICIAL: ${user?.fullName}`, 14, 28);
     (doc as any).autoTable({
       head: [['EXPEDIENTE', 'VÍCTIMA', 'AGRESOR', 'VIOLENCIA', 'RIESGO', 'OFICIAL', 'ESTADO']],
-      body: filteredCases.map(c => [c.caseNumber, c.victim.name, c.aggressor.name, c.violenceType, c.riskLevel, c.assignedOfficer, c.status]),
+      body: filteredCases.map(c => [c.caseNumber, c.victim.name, c.aggressor.name, c.violenceType.join(', '), c.riskLevel, c.assignedOfficer, c.status]),
       startY: 34, theme: 'grid',
       headStyles: { fillColor: [54, 71, 125], fontStyle: 'bold', fontSize: 7 },
       styles: { fontSize: 7, cellPadding: 2 },
@@ -146,7 +148,7 @@ export function DashboardView() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
+    <div className="min-h-screen flex flex-col bg-background">
       <header className="bg-primary text-primary-foreground py-3 px-8 flex justify-between items-center shadow-lg sticky top-0 z-50 backdrop-blur-md bg-primary/95 h-16">
         <div className="flex items-center gap-3">
           <div className="bg-white p-1 rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden">
@@ -159,6 +161,15 @@ export function DashboardView() {
         </div>
 
         <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="h-9 w-9 rounded-xl hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-11 px-3 hover:bg-white/10 rounded-xl border border-white/5 gap-3">
@@ -190,7 +201,7 @@ export function DashboardView() {
       <main className="flex-1 container mx-auto py-6 px-6 max-w-7xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <TabsList className="bg-white border shadow-sm p-1 h-12 rounded-xl">
+            <TabsList className="bg-card border shadow-sm p-1 h-12 rounded-xl">
               <TabsTrigger value="panel" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
                 <LayoutDashboard className="h-3.5 w-3.5" /> Vista General
               </TabsTrigger>
@@ -208,7 +219,7 @@ export function DashboardView() {
               <div className="flex items-center gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-white font-black h-10 px-4 border-primary/10 text-primary text-[10px] uppercase tracking-[0.1em] rounded-lg gap-2 shadow-sm">
+                    <Button variant="outline" className="bg-card font-black h-10 px-4 border-primary/10 text-primary text-[10px] uppercase tracking-[0.1em] rounded-lg gap-2 shadow-sm">
                       <Download className="h-3.5 w-3.5" /> Exportar Datos
                     </Button>
                   </DropdownMenuTrigger>
@@ -221,7 +232,7 @@ export function DashboardView() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <div className="h-10 flex items-center px-4 bg-white border border-primary/10 rounded-lg shadow-sm">
+                <div className="h-10 flex items-center px-4 bg-card border border-primary/10 rounded-lg shadow-sm">
                   <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mr-2">REGISTROS</span>
                   <span className="text-lg font-black text-primary leading-none">{filteredCases.length}</span>
                 </div>
@@ -256,7 +267,7 @@ export function DashboardView() {
         </Tabs>
       </main>
 
-      <footer className="py-4 px-8 border-t bg-white">
+      <footer className="py-4 px-8 border-t bg-card">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-muted/20 p-1 rounded-lg flex items-center justify-center overflow-hidden">

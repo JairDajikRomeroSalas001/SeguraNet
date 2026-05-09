@@ -18,6 +18,8 @@ const personSchema = z.object({
   street: z.string().min(1).max(200),
   number: z.string().min(1).max(20),
   district: z.string().min(1).max(100),
+  annex: z.string().max(200).optional().default(''),
+  community: z.string().max(200).optional().default(''),
   reference: z.string().max(500).optional().default(''),
 });
 
@@ -29,7 +31,7 @@ const createSchema = z.object({
   entryTime: z.string().min(1),
   victim: personSchema,
   aggressor: personSchema,
-  violenceType: z.string().min(1),
+  violenceType: z.array(z.string()).min(1, 'Seleccione al menos uno'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
   incidentDescription: z.string().min(1).max(5000),
   incidentDate: z.string().min(1),
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
     riskFactors: body.riskFactors,
     additionalObservations: body.additionalObservations ?? '',
     status: 'Pendiente',
-    tags: body.tags?.length ? body.tags : [body.violenceType, body.riskLevel],
+    tags: body.tags?.length ? body.tags : [...(body.violenceType ?? []), body.riskLevel],
     isDeleted: false,
     deletedAt: null,
     integrityHash: '',

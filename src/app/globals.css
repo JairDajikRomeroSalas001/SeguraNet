@@ -32,25 +32,30 @@
   }
 
   .dark {
-    --background: 226 40% 10%;
-    --foreground: 0 0% 98%;
-    --card: 226 40% 12%;
-    --card-foreground: 0 0% 98%;
-    --popover: 226 40% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 220 70% 60%;
-    --primary-foreground: 226 40% 10%;
-    --secondary: 226 40% 20%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 226 40% 20%;
-    --muted-foreground: 226 20% 65%;
-    --accent: 220 70% 50%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 226 40% 20%;
-    --input: 226 40% 20%;
-    --ring: 220 70% 60%;
+    --background: 222 47% 7%;       /* Navy muy oscuro */
+    --foreground: 210 40% 95%;      /* Blanco cálido */
+    --card: 222 44% 11%;            /* Tarjetas levemente más claras */
+    --card-foreground: 210 40% 95%;
+    --popover: 222 44% 11%;
+    --popover-foreground: 210 40% 95%;
+    --primary: 220 80% 68%;         /* Azul brillante legible */
+    --primary-foreground: 222 47% 7%;
+    --secondary: 222 38% 19%;       /* Azul oscuro medio */
+    --secondary-foreground: 210 40% 90%;
+    --muted: 222 38% 16%;
+    --muted-foreground: 215 25% 62%;
+    --accent: 220 75% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 58%;       /* Rojo más brillante y visible */
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 38% 22%;          /* Bordes visibles pero suaves */
+    --input: 222 38% 14%;           /* Inputs con fondo distinguible */
+    --ring: 220 80% 68%;
+    --chart-1: 220 80% 68%;
+    --chart-2: 220 75% 60%;
+    --chart-3: 197 55% 58%;
+    --chart-4: 43 85% 65%;
+    --chart-5: 27 87% 67%;
   }
 }
 
@@ -60,5 +65,10 @@
   }
   body {
     @apply bg-background text-foreground font-body;
+  }
+
+  /* Transición suave al cambiar de tema */
+  *, *::before, *::after {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
   }
 }

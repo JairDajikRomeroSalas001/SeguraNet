@@ -66,7 +66,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por expediente, nombres o DNI (víctima/agresor)..."
-              className="pl-10 bg-white"
+              className="pl-10 bg-card"
               value={filters.query}
               onChange={(e) => setFilters(f => ({ ...f, query: e.target.value }))}
             />
@@ -78,7 +78,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                 <Filter className="h-3 w-3" /> Estado
               </label>
               <Select value={filters.status} onValueChange={(v) => setFilters(f => ({ ...f, status: v }))}>
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
@@ -97,7 +97,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                 <ShieldAlert className="h-3 w-3" /> Riesgo
               </label>
               <Select value={filters.riskLevel} onValueChange={(v) => setFilters(f => ({ ...f, riskLevel: v }))}>
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue placeholder="Nivel de Riesgo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -114,7 +114,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
                 <AlertTriangle className="h-3 w-3" /> Violencia
               </label>
               <Select value={filters.violenceType} onValueChange={(v) => setFilters(f => ({ ...f, violenceType: v }))}>
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue placeholder="Tipo de Violencia" />
                 </SelectTrigger>
                 <SelectContent>
@@ -132,7 +132,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
               </label>
               <Input
                 type="date"
-                className="bg-white"
+                className="bg-card"
                 value={filters.startDate}
                 onChange={(e) => setFilters(f => ({ ...f, startDate: e.target.value }))}
               />
@@ -144,7 +144,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
               </label>
               <Input
                 type="date"
-                className="bg-white"
+                className="bg-card"
                 value={filters.endDate}
                 onChange={(e) => setFilters(f => ({ ...f, endDate: e.target.value }))}
               />
@@ -153,7 +153,7 @@ export function CaseSearch({ onSearch }: { onSearch: (filters: SearchFilters) =>
             <div className="flex items-end">
               <Button 
                 variant="outline" 
-                className="w-full text-muted-foreground hover:text-destructive hover:border-destructive transition-colors bg-white"
+                className="w-full text-muted-foreground hover:text-destructive hover:border-destructive transition-colors bg-card"
                 onClick={clearFilters}
               >
                 <X className="mr-2 h-3 w-3" /> Limpiar

@@ -151,16 +151,21 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
     drawHeader('Víctima', accent);
     drawTable([
       ['NOMBRE', c.victim.name], ['DNI', c.victim.dni], ['TELÉFONO', c.victim.phone],
-      ['DIRECCIÓN', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`], ['REFERENCIA', c.victim.reference || 'NO REGISTRA'],
+      ['DIRECCIÓN', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`],
+      ...(c.victim.annex ? [['ANEXO', c.victim.annex] as [string, string]] : []),
+      ...(c.victim.community ? [['COMUNIDAD', c.victim.community] as [string, string]] : []),
+      ['REFERENCIA', c.victim.reference || 'NO REGISTRA'],
     ]);
     drawHeader('Agresor', destructive);
     drawTable([
       ['NOMBRE', c.aggressor.name], ['DNI', c.aggressor.dni], ['TELÉFONO', c.aggressor.phone],
       ['DIRECCIÓN', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`],
+      ...(c.aggressor.annex ? [['ANEXO', c.aggressor.annex] as [string, string]] : []),
+      ...(c.aggressor.community ? [['COMUNIDAD', c.aggressor.community] as [string, string]] : []),
     ]);
     drawHeader('Clasificación', primary);
     drawTable([
-      ['TIPO VIOLENCIA', c.violenceType], ['RIESGO', c.riskLevel.toUpperCase()],
+      ['TIPO VIOLENCIA', c.violenceType.join(', ')], ['RIESGO', c.riskLevel.toUpperCase()],
       ['LUGAR', c.incidentLocation], ['FECHA SUCESO', format(new Date(c.incidentDate), 'dd/MM/yyyy')], ['HORA APROX', c.incidentTime],
     ]);
 
@@ -190,7 +195,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
 
   if (cases.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-lg border border-dashed">
+      <div className="flex flex-col items-center justify-center p-12 bg-card rounded-lg border border-dashed">
         <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
         <p className="text-muted-foreground">No se encontraron denuncias.</p>
       </div>
@@ -199,7 +204,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
@@ -220,7 +225,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                 <TableCell className="font-mono text-[11px] font-bold">{c.caseNumber}</TableCell>
                 <TableCell className="text-[11px]">{c.victim.name}</TableCell>
                 <TableCell className="text-[11px]">{c.aggressor.name}</TableCell>
-                <TableCell className="text-[11px]">{c.violenceType}</TableCell>
+                <TableCell className="text-[11px]">{c.violenceType.join(', ')}</TableCell>
                 <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer}</TableCell>
                 <TableCell><Badge variant="outline" className={`text-[9px] font-bold ${riskColors[c.riskLevel]}`}>{c.riskLevel}</Badge></TableCell>
                 <TableCell>
@@ -253,7 +258,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 py-4 bg-white rounded-xl border border-primary/10 shadow-sm">
+        <div className="flex items-center justify-between px-2 py-4 bg-card rounded-xl border border-primary/10 shadow-sm">
           <p className="text-[11px] text-muted-foreground font-medium">
             Mostrando <span className="font-bold text-primary">{startIndex + 1}</span> a <span className="font-bold text-primary">{Math.min(startIndex + ITEMS_PER_PAGE, cases.length)}</span> de <span className="font-bold text-primary">{cases.length}</span>
           </p>
@@ -293,6 +298,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                     <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.victim.dni)}</p>
                     <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.victim.phone}</p>
                     <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
+                    {viewingCase.victim.annex && <p className="text-xs"><strong>ANEXO:</strong> {viewingCase.victim.annex}</p>}
+                    {viewingCase.victim.community && <p className="text-xs"><strong>COMUNIDAD:</strong> {viewingCase.victim.community}</p>}
                     <p className="text-xs"><strong>REFERENCIA:</strong> {viewingCase.victim.reference || 'Ninguna'}</p>
                   </div>
                 </div>
@@ -303,28 +310,30 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                     <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.aggressor.dni)}</p>
                     <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.aggressor.phone}</p>
                     <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
+                    {viewingCase.aggressor.annex && <p className="text-xs"><strong>ANEXO:</strong> {viewingCase.aggressor.annex}</p>}
+                    {viewingCase.aggressor.community && <p className="text-xs"><strong>COMUNIDAD:</strong> {viewingCase.aggressor.community}</p>}
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                <div className="p-4 bg-card rounded-2xl border shadow-sm flex flex-col items-center text-center">
                   <UserCheck className="h-5 w-5 text-primary mb-2" />
                   <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase">Oficial</h4>
                   <p className="text-xs font-black uppercase text-primary">{viewingCase.assignedOfficer}</p>
                 </div>
-                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                <div className="p-4 bg-card rounded-2xl border shadow-sm flex flex-col items-center text-center">
                   <AlertTriangle className="h-5 w-5 text-amber-500 mb-2" />
                   <h4 className="text-[9px] font-black text-muted-foreground mb-1 uppercase">Tipo</h4>
-                  <p className="text-xs font-black text-primary">{viewingCase.violenceType}</p>
+                  <p className="text-xs font-black text-primary">{viewingCase.violenceType.join(', ')}</p>
                 </div>
-                <div className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                <div className="p-4 bg-card rounded-2xl border shadow-sm flex flex-col items-center text-center">
                   <Badge variant="outline" className={`text-[10px] font-black mb-1 ${riskColors[viewingCase.riskLevel]}`}>{viewingCase.riskLevel}</Badge>
                   <h4 className="text-[9px] font-black text-muted-foreground uppercase">Riesgo</h4>
                 </div>
               </div>
 
-              <div className="space-y-3 p-5 bg-slate-50 rounded-2xl border">
+              <div className="space-y-3 p-5 bg-muted/30 rounded-2xl border">
                 <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em] mb-2"><History className="h-4 w-4" /> Información del Incidente</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-xs">
                   <p><strong>FECHA:</strong> {format(new Date(viewingCase.incidentDate), 'dd/MM/yyyy')}</p>
@@ -349,7 +358,10 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
 
       <Dialog open={isEditingFormOpen} onOpenChange={setIsEditingFormOpen}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0">
-          {targetEdit && (
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle className="text-xl font-black">Editar expediente</DialogTitle>
+          </DialogHeader>
+          {targetEdit ? (
             <CaseRegistrationForm
               initialData={targetEdit}
               onCaseAdded={updated => {
@@ -359,6 +371,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                 }
               }}
             />
+          ) : (
+            <div className="p-6">Cargando...</div>
           )}
         </DialogContent>
       </Dialog>

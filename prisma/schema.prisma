@@ -47,6 +47,8 @@ model Case {
   victimStreet    String // 🔒
   victimNumber    String // 🔒
   victimDistrict  String
+  victimAnnex     String @default("")
+  victimCommunity String @default("")
   victimReference String // 🔒
 
   // Agresor
@@ -56,6 +58,8 @@ model Case {
   aggressorStreet    String // 🔒
   aggressorNumber    String // 🔒
   aggressorDistrict  String
+  aggressorAnnex     String @default("")
+  aggressorCommunity String @default("")
   aggressorReference String // 🔒
 
   violenceType           String
