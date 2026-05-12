@@ -34,12 +34,8 @@ export function canManageCase(session: SessionPayload, createdByUid: string): bo
   return false;
 }
 
-export function canViewCase(session: SessionPayload, createdByUid: string): boolean {
-  if (session.role === 'superadmin' || session.role === 'auditor') return true;
-  if (session.role === 'oficial_operativo' || session.role === 'readonly') {
-    return session.uid === createdByUid;
-  }
-  return false;
+export function canViewCase(session: SessionPayload, _createdByUid: string): boolean {
+  return ['superadmin', 'auditor', 'oficial_operativo', 'readonly'].includes(session.role);
 }
 
 export function rankOf(role: Role): number {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { v4 as uuid } from 'uuid';
 import { prisma } from '@/lib/prisma';
 import { requireSession, clientIp, userAgent } from '@/lib/middleware/auth-helper';
-import { hasRole, requireRole } from '@/lib/middleware/rbac';
+import { requireRole } from '@/lib/middleware/rbac';
 import { sha256Hex } from '@/lib/security/hmac';
 import { logAuditEvent } from '@/lib/audit-logger';
 import { caseToDbInput, dbToCase } from '@/lib/cases/case-mapper';
@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1));
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? 100)));
 
+  const onlyMine = url.searchParams.get('onlyMine') === '1';
   const where: Record<string, unknown> = { isDeleted: false };
-  if (!hasRole(session, ['superadmin', 'auditor'])) {
+  if (onlyMine) {
     where.createdByUid = session.uid;
   }
   if (status) where.status = status;

@@ -7,11 +7,12 @@ import { CaseRegistrationForm } from './cases/case-registration-form';
 import { CaseSearch, SearchFilters } from './cases/case-search';
 import { SettingsView } from './settings-view';
 import { UsersManagement } from './users-management';
+import { CasesStats } from './stats/cases-stats';
 import { fetchCases } from '@/lib/store';
 import {
   LayoutDashboard, FilePlus, LogOut, User as UserIcon,
   Download, FileText, FileSpreadsheet, Settings, ChevronDown, Users, Loader2,
-  Facebook, Instagram, Moon, Sun,
+  Facebook, Instagram, Moon, Sun, BarChart3,
 } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { useTheme } from 'next-themes';
@@ -213,6 +214,11 @@ export function DashboardView() {
                   <Users className="h-3.5 w-3.5" /> Personal Policial
                 </TabsTrigger>
               )}
+              {isSuperadmin && (
+                <TabsTrigger value="estadisticas" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-white h-10 px-6 rounded-lg font-bold text-xs uppercase tracking-wider">
+                  <BarChart3 className="h-3.5 w-3.5" /> Estadísticas
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {activeTab === 'panel' && (
@@ -258,6 +264,12 @@ export function DashboardView() {
           {isSuperadmin && (
             <TabsContent value="usuarios" className="mt-0 outline-none">
               <UsersManagement />
+            </TabsContent>
+          )}
+
+          {isSuperadmin && (
+            <TabsContent value="estadisticas" className="mt-0 outline-none">
+              <CasesStats cases={allCases} />
             </TabsContent>
           )}
 

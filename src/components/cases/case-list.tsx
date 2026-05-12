@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PoliceCase, CaseStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Printer, Trash2, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { FileText, Eye, Clock, ShieldAlert, CheckCircle2, Lock, Archive, User, UserCheck, AlertTriangle, History, ShieldCheck, ChevronLeft, ChevronRight, Edit, Printer, Trash2, Loader2, EyeOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingCase, setViewingCase] = useState<PoliceCase | null>(null);
+  const [onlyMine, setOnlyMine] = useState(false);
 
   const [passwordPurpose, setPasswordPurpose] = useState<PasswordPurpose | null>(null);
   const [targetStatus, setTargetStatus] = useState<{ id: string; caseNumber: string; status: CaseStatus } | null>(null);
@@ -56,16 +58,29 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => { setCurrentPage(1); }, [cases.length]);
+  const filteredCases = useMemo(() => {
+    if (!onlyMine || !user) return cases;
+    return cases.filter(c => c.createdByUid === user.uid);
+  }, [cases, onlyMine, user]);
 
-  const totalPages = Math.ceil(cases.length / ITEMS_PER_PAGE);
+  const myCount = useMemo(
+    () => (user ? cases.filter(c => c.createdByUid === user.uid).length : 0),
+    [cases, user],
+  );
+
+  useEffect(() => { setCurrentPage(1); }, [filteredCases.length]);
+
+  const totalPages = Math.ceil(filteredCases.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedCases = cases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedCases = filteredCases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const canManageCase = (c: PoliceCase) => {
     if (!user) return false;
     return user.role === 'superadmin' || c.createdByUid === user.uid;
   };
+
+  const isOwner = (c: PoliceCase) => !!user && c.createdByUid === user.uid;
+  const showOwnershipBadge = user?.role === 'oficial_operativo';
 
   const cancelPassword = () => {
     setPasswordPurpose(null);
@@ -193,17 +208,43 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
     doc.save(`EXPEDIENTE_${c.caseNumber}.pdf`);
   };
 
-  if (cases.length === 0) {
+  const filterBar = user && (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-card rounded-xl border shadow-sm">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        {onlyMine ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5" />}
+        <span>{onlyMine ? `Mostrando solo míos (${myCount})` : `Mostrando todos (${cases.length})`}</span>
+        {!onlyMine && myCount > 0 && (
+          <span className="text-[10px] font-medium normal-case tracking-normal text-muted-foreground/70">
+            · {myCount} {myCount === 1 ? 'es mío' : 'son míos'}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Label htmlFor="only-mine" className="text-[10px] font-black uppercase text-muted-foreground cursor-pointer">
+          Solo míos
+        </Label>
+        <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
+      </div>
+    </div>
+  );
+
+  if (filteredCases.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-card rounded-lg border border-dashed">
-        <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground">No se encontraron denuncias.</p>
+      <div className="space-y-4">
+        {filterBar}
+        <div className="flex flex-col items-center justify-center p-12 bg-card rounded-lg border border-dashed">
+          <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+          <p className="text-muted-foreground">
+            {onlyMine ? 'No tienes expedientes propios.' : 'No se encontraron denuncias.'}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {filterBar}
       <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
         <Table>
           <TableHeader className="bg-primary/5">
@@ -222,7 +263,18 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
           <TableBody>
             {paginatedCases.map(c => (
               <TableRow key={c.id} className="hover:bg-muted/30">
-                <TableCell className="font-mono text-[11px] font-bold">{c.caseNumber}</TableCell>
+                <TableCell className="font-mono text-[11px] font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <span>{c.caseNumber}</span>
+                    {showOwnershipBadge && (
+                      isOwner(c) ? (
+                        <Badge className="text-[8px] font-black bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 px-1.5 py-0">MÍO</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[8px] font-black bg-slate-100 text-slate-600 border-slate-200 px-1.5 py-0">SOLO LECTURA</Badge>
+                      )
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-[11px]">{c.victim.name}</TableCell>
                 <TableCell className="text-[11px]">{c.aggressor.name}</TableCell>
                 <TableCell className="text-[11px]">{c.violenceType.join(', ')}</TableCell>
@@ -260,7 +312,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-4 bg-card rounded-xl border border-primary/10 shadow-sm">
           <p className="text-[11px] text-muted-foreground font-medium">
-            Mostrando <span className="font-bold text-primary">{startIndex + 1}</span> a <span className="font-bold text-primary">{Math.min(startIndex + ITEMS_PER_PAGE, cases.length)}</span> de <span className="font-bold text-primary">{cases.length}</span>
+            Mostrando <span className="font-bold text-primary">{startIndex + 1}</span> a <span className="font-bold text-primary">{Math.min(startIndex + ITEMS_PER_PAGE, filteredCases.length)}</span> de <span className="font-bold text-primary">{filteredCases.length}</span>
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
