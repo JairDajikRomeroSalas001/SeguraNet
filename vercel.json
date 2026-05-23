@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run db:generate && npm run build && rm -rf .next/cache .next/traces",
-  "outputDirectory": ".next",
+  "buildCommand": "npm run db:generate && npm run build",
+  "outputDirectory": ".next/standalone",
   "devCommand": "npm run dev",
   "framework": "nextjs"
 }
