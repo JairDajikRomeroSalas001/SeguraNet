@@ -2,6 +2,5 @@
   "buildCommand": "npm run db:generate && npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "framework": "nextjs",
-  "nodeVersion": "20.x"
+  "framework": "nextjs"
 }
