@@ -1,10 +1,10 @@
 import { api } from './api-client';
-import type { CaseStatus, PoliceCase } from './types';
+import type { CaseStatus, PoliceCase, AppNotification } from './types';
 
 type CaseCreateInput = Omit<
   PoliceCase,
   'id' | 'createdAt' | 'updatedAt' | 'isDeleted' | 'deletedAt' |
-  'integrityHash' | 'createdByUid' | 'createdByUsername' | 'status'
+  'integrityHash' | 'createdByUid' | 'createdByUsername' | 'status' | 'deadlineAt'
 > & { status?: CaseStatus };
 
 export async function fetchCases(): Promise<PoliceCase[]> {
@@ -33,4 +33,17 @@ export async function updateCaseStatus(id: string, status: CaseStatus, passwordC
 
 export async function deleteCase(id: string, passwordConfirm: string): Promise<void> {
   await api.delete(`/api/cases/${id}`, { passwordConfirm });
+}
+
+export async function fetchNotifications(): Promise<AppNotification[]> {
+  const { notifications } = await api.get<{ notifications: AppNotification[] }>('/api/notifications');
+  return notifications;
+}
+
+export async function triggerExpiredCheck(): Promise<{ checked: number; created: number }> {
+  return api.post<{ checked: number; created: number }>('/api/notifications/check-expired', {});
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await api.patch(`/api/notifications/${id}`, {});
 }

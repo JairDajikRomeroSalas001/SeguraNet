@@ -56,6 +56,8 @@ export function caseToDbInput(c: PoliceCase) {
 
     createdAt: new Date(c.createdAt),
     updatedAt: new Date(c.updatedAt),
+
+    deadlineAt: c.deadlineAt ? new Date(c.deadlineAt) : null,
   };
 }
 
@@ -110,6 +112,7 @@ export function dbToCase(row: DbCase): PoliceCase {
     createdByUsername: row.createdByUsername,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    deadlineAt: row.deadlineAt?.toISOString() ?? null,
   };
 }
 

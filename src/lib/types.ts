@@ -41,6 +41,16 @@ export interface PoliceCase {
   integrityHash: string;
   createdAt: string;
   updatedAt: string;
+  deadlineAt: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  caseId: string;
+  caseNumber: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface User {

@@ -29,6 +29,8 @@ import 'jspdf-autotable';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useSessionTimeout } from '@/hooks/use-session-timeout';
+import { useNotifications } from '@/hooks/use-notifications';
+import { NotificationBell } from './notifications/notification-bell';
 
 const XIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
@@ -55,6 +57,7 @@ export function DashboardView() {
   });
 
   useSessionTimeout();
+  const { notifications, unreadCount, refresh: refreshNotifications } = useNotifications();
 
   const pnpLogo = PlaceHolderImages.find(img => img.id === 'pnp-logo');
   const isSuperadmin = user?.role === 'superadmin';
@@ -171,6 +174,13 @@ export function DashboardView() {
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+          {isSuperadmin && (
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onRead={() => refreshNotifications()}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-11 px-3 hover:bg-white/10 rounded-xl border border-white/5 gap-3">

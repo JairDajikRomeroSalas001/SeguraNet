@@ -77,6 +77,8 @@ model Case {
   deletedAt     DateTime?
   integrityHash String
 
+  deadlineAt DateTime?
+
   createdByUid      String
   createdByUsername String
   createdBy         User   @relation("CaseCreator", fields: [createdByUid], references: [id])
@@ -84,11 +86,29 @@ model Case {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  documents Document[]
+  documents     Document[]
+  notifications Notification[]
 
   @@index([createdByUid])
   @@index([status])
   @@index([isDeleted])
+  @@index([createdAt])
+  @@index([deadlineAt])
+}
+
+// Notificación de vencimiento de plazo de expediente (solo superadmin la consume)
+model Notification {
+  id         String   @id @default(uuid())
+  caseId     String
+  caseNumber String
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId])
+  @@index([isRead])
   @@index([createdAt])
 }
 

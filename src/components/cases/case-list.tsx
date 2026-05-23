@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { maskDni } from '@/lib/masks';
 import { ApiError } from '@/lib/api-client';
 import { DocumentManager } from './document-manager';
+import { CaseDeadlineCell } from './case-deadline-cell';
 
 const statusConfig: Record<CaseStatus, { color: string; icon: React.ReactNode }> = {
   Pendiente: { color: 'text-yellow-600', icon: <Clock className="h-3 w-3" /> },
@@ -255,6 +256,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
               <TableHead className="font-bold text-primary text-[11px] uppercase">Tipo</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Oficial</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Riesgo</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase">Tiempo</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Estado</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Actualización</TableHead>
               <TableHead className="text-right font-bold text-primary text-[11px] uppercase">Acciones</TableHead>
@@ -280,6 +282,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                 <TableCell className="text-[11px]">{c.violenceType.join(', ')}</TableCell>
                 <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer}</TableCell>
                 <TableCell><Badge variant="outline" className={`text-[9px] font-bold ${riskColors[c.riskLevel]}`}>{c.riskLevel}</Badge></TableCell>
+                <TableCell><CaseDeadlineCell deadlineAt={c.deadlineAt} status={c.status} /></TableCell>
                 <TableCell>
                   <Select value={c.status} onValueChange={v => { setTargetStatus({ id: c.id, caseNumber: c.caseNumber, status: v as CaseStatus }); setPasswordPurpose('status'); }} disabled={!canManageCase(c)}>
                     <SelectTrigger className={`h-7 w-[130px] text-[10px] font-black bg-muted/20 ${statusConfig[c.status].color} rounded-lg ${!canManageCase(c) ? 'opacity-50 cursor-not-allowed' : ''}`}><SelectValue /></SelectTrigger>

@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/middleware/rbac';
 import { sha256Hex } from '@/lib/security/hmac';
 import { logAuditEvent } from '@/lib/audit-logger';
 import { caseToDbInput, dbToCase } from '@/lib/cases/case-mapper';
+import { computeDeadline } from '@/lib/cases/deadline';
 import type { PoliceCase } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
     createdByUsername: session.username,
     createdAt: now,
     updatedAt: now,
+    deadlineAt: computeDeadline(new Date(now), body.riskLevel).toISOString(),
   };
   plain.integrityHash = sha256Hex(JSON.stringify(plain));
 
