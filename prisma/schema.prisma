@@ -3,7 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  // En producción (Hostinger) usamos MySQL / MariaDB.
+  // Cambia a "postgresql" si prefieres Postgres.
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 

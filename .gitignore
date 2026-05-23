@@ -32,7 +32,8 @@ yarn-error.log*
 
 # Datos locales (SQLite + uploads)
 prisma/seguranet.db*
-prisma/migrations/
+# prisma/migrations/   <-- permitimos commitear migraciones para producción
+prisma/migrations/**
 seguranet.db
 seguranet.db-journal
 uploads/*
