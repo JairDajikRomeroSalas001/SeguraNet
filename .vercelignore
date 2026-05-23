@@ -1,0 +1,17 @@
+.env
+.env.local
+.env.*.local
+node_modules
+.git
+.gitignore
+README.md
+*.md
+.next/cache
+.next/static
+coverage
+.vscode
+.idea
+*.log
+*.swp
+.DS_Store
+prisma/migrations
