@@ -6,7 +6,7 @@ import { requireSession, clientIp, userAgent } from '@/lib/middleware/auth-helpe
 import { requireRole } from '@/lib/middleware/rbac';
 import { sha256Hex } from '@/lib/security/hmac';
 import { logAuditEvent } from '@/lib/audit-logger';
-import { caseToDbInput, dbToCase } from '@/lib/cases/case-mapper';
+import { caseToDbInput, personToDbInput, dbToCase } from '@/lib/cases/case-mapper';
 import { computeDeadline } from '@/lib/cases/deadline';
 import type { PoliceCase } from '@/lib/types';
 
@@ -16,8 +16,8 @@ const personSchema = z.object({
   name: z.string().min(1).max(200),
   dni: z.string().regex(/^\d{8}$/),
   phone: z.string().regex(/^\d{9}$/),
-  street: z.string().min(1).max(200),
-  number: z.string().min(1).max(20),
+  street: z.string().max(200).optional().default(''),
+  number: z.string().max(20).optional().default(''),
   district: z.string().min(1).max(100),
   annex: z.string().max(200).optional().default(''),
   community: z.string().max(200).optional().default(''),
@@ -30,8 +30,8 @@ const createSchema = z.object({
   origin: z.string().min(1).max(100),
   entryDate: z.string().min(1),
   entryTime: z.string().min(1),
-  victim: personSchema,
-  aggressor: personSchema,
+  victims: z.array(personSchema).min(1, 'Mínimo 1 víctima'),
+  aggressors: z.array(personSchema).min(1, 'Mínimo 1 agresor'),
   violenceType: z.array(z.string()).min(1, 'Seleccione al menos uno'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
   incidentDescription: z.string().min(1).max(5000),
@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
     prisma.case.count({ where }),
     prisma.case.findMany({
       where,
+      include: { persons: true },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -114,8 +115,8 @@ export async function POST(request: NextRequest) {
     origin: body.origin,
     entryDate: body.entryDate,
     entryTime: body.entryTime,
-    victim: body.victim,
-    aggressor: body.aggressor,
+    victims: body.victims,
+    aggressors: body.aggressors,
     violenceType: body.violenceType,
     riskLevel: body.riskLevel,
     incidentDescription: body.incidentDescription,
@@ -137,14 +138,23 @@ export async function POST(request: NextRequest) {
   };
   plain.integrityHash = sha256Hex(JSON.stringify(plain));
 
-  await prisma.case.create({ data: caseToDbInput(plain) });
+  // Transacción atómica: crear caso + todas las personas vinculadas
+  await prisma.$transaction(async (tx) => {
+    await tx.case.create({ data: caseToDbInput(plain) });
+
+    const personRecords = [
+      ...body.victims.map((v, i) => personToDbInput(v, id, 'victim', i)),
+      ...body.aggressors.map((a, i) => personToDbInput(a, id, 'aggressor', i)),
+    ];
+    await tx.casePerson.createMany({ data: personRecords });
+  });
 
   await logAuditEvent({
     officerUid: session.uid,
     officerUsername: session.username,
     action: 'CREATE_EXPEDIENT',
     resourceId: id,
-    details: `Expediente ${body.caseNumber} creado`,
+    details: `Expediente ${body.caseNumber} creado (${body.victims.length} víctimas, ${body.aggressors.length} agresores)`,
     userAgent: userAgent(request),
     ipAddress: clientIp(request),
   });

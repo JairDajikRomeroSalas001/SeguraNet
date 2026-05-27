@@ -1,12 +1,65 @@
 import 'server-only';
-import type { Case as DbCase } from '@prisma/client';
+import type { Case as DbCase, CasePerson as DbCasePerson } from '@prisma/client';
+import { v4 as uuid } from 'uuid';
 import { encryptField, decryptField } from '@/lib/security/field-encryption';
-import type { PoliceCase, RiskLevel, CaseStatus } from '@/lib/types';
+import type { PoliceCase, PersonData, RiskLevel, CaseStatus } from '@/lib/types';
 
-// Campos PII cifrados en la BD (también listados aquí para referencia visual).
+// Helpers de cifrado PII
 const ENC = (s: string) => encryptField(s);
 const DEC = (s: string) => decryptField(s);
 
+// ─── Persona → DB ────────────────────────────────────────────────────────────
+
+/**
+ * Cifra un PersonData para insertar como registro CasePerson.
+ * Cada campo PII se cifra individualmente con AES-256-GCM.
+ */
+export function personToDbInput(
+  p: PersonData,
+  caseId: string,
+  role: 'victim' | 'aggressor',
+  sortOrder: number,
+) {
+  return {
+    id: uuid(),
+    caseId,
+    role,
+    sortOrder,
+    name: ENC(p.name),
+    dni: ENC(p.dni),
+    phone: ENC(p.phone),
+    street: ENC(p.street),
+    number: ENC(p.number),
+    district: p.district,
+    annex: p.annex ?? '',
+    community: p.community ?? '',
+    reference: ENC(p.reference),
+  };
+}
+
+/**
+ * Descifra un registro CasePerson → PersonData.
+ */
+export function dbPersonToData(row: DbCasePerson): PersonData {
+  return {
+    name: DEC(row.name),
+    dni: DEC(row.dni),
+    phone: DEC(row.phone),
+    street: DEC(row.street),
+    number: DEC(row.number),
+    district: row.district,
+    annex: row.annex,
+    community: row.community,
+    reference: DEC(row.reference),
+  };
+}
+
+// ─── Case → DB ───────────────────────────────────────────────────────────────
+
+/**
+ * Convierte un PoliceCase a la estructura plana para Prisma (sin personas).
+ * Las personas se insertan por separado con personToDbInput().
+ */
 export function caseToDbInput(c: PoliceCase) {
   return {
     id: c.id,
@@ -15,26 +68,6 @@ export function caseToDbInput(c: PoliceCase) {
     origin: c.origin,
     entryDate: c.entryDate,
     entryTime: c.entryTime,
-
-    victimName: ENC(c.victim.name),
-    victimDni: ENC(c.victim.dni),
-    victimPhone: ENC(c.victim.phone),
-    victimStreet: ENC(c.victim.street),
-    victimNumber: ENC(c.victim.number),
-    victimDistrict: c.victim.district,
-    victimAnnex: c.victim.annex ?? '',
-    victimCommunity: c.victim.community ?? '',
-    victimReference: ENC(c.victim.reference),
-
-    aggressorName: ENC(c.aggressor.name),
-    aggressorDni: ENC(c.aggressor.dni),
-    aggressorPhone: ENC(c.aggressor.phone),
-    aggressorStreet: ENC(c.aggressor.street),
-    aggressorNumber: ENC(c.aggressor.number),
-    aggressorDistrict: c.aggressor.district,
-    aggressorAnnex: c.aggressor.annex ?? '',
-    aggressorCommunity: c.aggressor.community ?? '',
-    aggressorReference: ENC(c.aggressor.reference),
 
     violenceType: JSON.stringify(c.violenceType ?? []),
     riskLevel: c.riskLevel,
@@ -61,7 +94,27 @@ export function caseToDbInput(c: PoliceCase) {
   };
 }
 
-export function dbToCase(row: DbCase): PoliceCase {
+// ─── DB → Case ───────────────────────────────────────────────────────────────
+
+type DbCaseWithPersons = DbCase & { persons: DbCasePerson[] };
+
+/**
+ * Convierte un registro de BD (con personas incluidas) a PoliceCase.
+ * Las personas se separan por rol y se ordenan por sortOrder.
+ */
+export function dbToCase(row: DbCaseWithPersons): PoliceCase {
+  const persons = row.persons ?? [];
+
+  const victims = persons
+    .filter(p => p.role === 'victim')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(dbPersonToData);
+
+  const aggressors = persons
+    .filter(p => p.role === 'aggressor')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(dbPersonToData);
+
   return {
     id: row.id,
     caseNumber: row.caseNumber,
@@ -70,28 +123,8 @@ export function dbToCase(row: DbCase): PoliceCase {
     entryDate: row.entryDate,
     entryTime: row.entryTime,
 
-    victim: {
-      name: DEC(row.victimName),
-      dni: DEC(row.victimDni),
-      phone: DEC(row.victimPhone),
-      street: DEC(row.victimStreet),
-      number: DEC(row.victimNumber),
-      district: row.victimDistrict,
-      annex: row.victimAnnex,
-      community: row.victimCommunity,
-      reference: DEC(row.victimReference),
-    },
-    aggressor: {
-      name: DEC(row.aggressorName),
-      dni: DEC(row.aggressorDni),
-      phone: DEC(row.aggressorPhone),
-      street: DEC(row.aggressorStreet),
-      number: DEC(row.aggressorNumber),
-      district: row.aggressorDistrict,
-      annex: row.aggressorAnnex,
-      community: row.aggressorCommunity,
-      reference: DEC(row.aggressorReference),
-    },
+    victims,
+    aggressors,
 
     violenceType: safeJsonOrString(row.violenceType),
     riskLevel: row.riskLevel as RiskLevel,
@@ -115,6 +148,8 @@ export function dbToCase(row: DbCase): PoliceCase {
     deadlineAt: row.deadlineAt?.toISOString() ?? null,
   };
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function safeJson(s: string): string[] {
   try {

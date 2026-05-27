@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   const [caseRows, audit] = await Promise.all([
-    prisma.case.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.case.findMany({ include: { persons: true }, orderBy: { createdAt: 'desc' } }),
     listAuditEntries({ limit: 10000 }),
   ]);
   const cases = caseRows.map(dbToCase);

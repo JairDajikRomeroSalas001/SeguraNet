@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { PoliceCase, CaseStatus } from '@/lib/types';
+import { PoliceCase, CaseStatus, PersonData } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,66 @@ const riskColors: Record<string, string> = {
 
 const ITEMS_PER_PAGE = 10;
 type PasswordPurpose = 'status' | 'edit-entry' | 'edit-save' | 'delete';
+
+const formatAddress = (p: { street?: string; number?: string; district: string; annex?: string; community?: string }) => {
+  const parts: string[] = [];
+  if (p.street) {
+    parts.push(`${p.street}${p.number ? ` #${p.number}` : ''}`);
+  }
+  if (p.community) {
+    parts.push(`Comunidad: ${p.community}`);
+  }
+  if (p.annex) {
+    parts.push(`Anexo: ${p.annex}`);
+  }
+  parts.push(p.district);
+  return parts.join(', ');
+};
+
+// Helper: muestra el primer nombre + badge "+N" si hay más
+const PersonSummary = ({ persons, color }: { persons: PersonData[]; color: string }) => {
+  if (!persons || persons.length === 0) return <span className="text-muted-foreground italic text-[10px]">Sin datos</span>;
+  
+  const initials = persons[0].name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black border shadow-sm ${color}`}>
+        {initials}
+      </div>
+      <div className="flex flex-col">
+        <span className="truncate max-w-[110px] font-bold text-[11px] leading-tight text-foreground">{persons[0].name}</span>
+        {persons.length > 1 && (
+          <span className="text-[9px] text-muted-foreground font-black tracking-wider mt-0.5">+{persons.length - 1} MÁS</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Helper: renderiza una tarjeta de persona para el dialog de detalle
+const PersonDetailCard = ({
+  person, index, total, title, bgClass, borderClass, titleColor,
+}: {
+  person: PersonData; index: number; total: number; title: string;
+  bgClass: string; borderClass: string; titleColor: string;
+}) => (
+  <div className={`space-y-3 p-5 ${bgClass} rounded-2xl border ${borderClass} shadow-sm`}>
+    <h4 className={`text-[10px] font-black ${titleColor} flex items-center gap-2 uppercase tracking-[0.2em] border-b ${borderClass} pb-2`}>
+      <User className="h-4 w-4" />
+      {title} {total > 1 && <Badge variant="outline" className={`text-[8px] font-black ${titleColor} ml-1`}>{index + 1} de {total}</Badge>}
+    </h4>
+    <div className="space-y-2 pt-1">
+      <p className="text-xs"><strong>NOMBRE:</strong> {person.name}</p>
+      <p className="text-xs"><strong>DNI:</strong> {maskDni(person.dni)}</p>
+      <p className="text-xs"><strong>CELULAR:</strong> {person.phone}</p>
+      <p className="text-xs"><strong>DIRECCIÓN:</strong> {formatAddress(person)}</p>
+      {person.annex && <p className="text-xs"><strong>ANEXO:</strong> {person.annex}</p>}
+      {person.community && <p className="text-xs"><strong>COMUNIDAD:</strong> {person.community}</p>}
+      <p className="text-xs"><strong>REFERENCIA:</strong> {person.reference || 'Ninguna'}</p>
+    </div>
+  </div>
+);
 
 export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: () => void }) {
   const { user } = useAuth();
@@ -99,8 +159,6 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
         onUpdate();
         cancelPassword();
       } else if (passwordPurpose === 'edit-entry' && targetEdit) {
-        // Verificación: hacemos un PUT no-op para validar la contraseña antes de abrir el editor
-        // pero como el PUT ahora valida y aplica, mejor abrimos el editor y validamos en el guardado.
         setIsEditingFormOpen(true);
         setPasswordPurpose(null);
         setPasswordVerify('');
@@ -144,6 +202,7 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
 
     let y = 42;
     const drawHeader = (title: string, color: number[]) => {
+      if (y > 260) { doc.addPage(); y = 20; }
       doc.setFillColor(color[0], color[1], color[2]);
       doc.roundedRect(14, y, 182, 4.5, 1, 1, 'F');
       doc.setTextColor(255, 255, 255); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
@@ -164,27 +223,39 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
       ['OFICIAL', c.assignedOfficer], ['ORIGEN', c.origin],
       ['FECHA REGISTRO', format(new Date(c.entryDate), 'dd/MM/yyyy')], ['HORA', c.entryTime], ['ESTADO', c.status.toUpperCase()],
     ]);
-    drawHeader('Víctima', accent);
-    drawTable([
-      ['NOMBRE', c.victim.name], ['DNI', c.victim.dni], ['TELÉFONO', c.victim.phone],
-      ['DIRECCIÓN', `${c.victim.street} #${c.victim.number}, ${c.victim.district}`],
-      ...(c.victim.annex ? [['ANEXO', c.victim.annex] as [string, string]] : []),
-      ...(c.victim.community ? [['COMUNIDAD', c.victim.community] as [string, string]] : []),
-      ['REFERENCIA', c.victim.reference || 'NO REGISTRA'],
-    ]);
-    drawHeader('Agresor', destructive);
-    drawTable([
-      ['NOMBRE', c.aggressor.name], ['DNI', c.aggressor.dni], ['TELÉFONO', c.aggressor.phone],
-      ['DIRECCIÓN', `${c.aggressor.street} #${c.aggressor.number}, ${c.aggressor.district}`],
-      ...(c.aggressor.annex ? [['ANEXO', c.aggressor.annex] as [string, string]] : []),
-      ...(c.aggressor.community ? [['COMUNIDAD', c.aggressor.community] as [string, string]] : []),
-    ]);
+
+    // Víctimas (iterar sobre todas)
+    c.victims.forEach((v, i) => {
+      const label = c.victims.length > 1 ? `Víctima ${i + 1} de ${c.victims.length}` : 'Víctima';
+      drawHeader(label, accent);
+      drawTable([
+        ['NOMBRE', v.name], ['DNI', v.dni], ['TELÉFONO', v.phone],
+        ['DIRECCIÓN', formatAddress(v)],
+        ...(v.annex ? [['ANEXO', v.annex] as [string, string]] : []),
+        ...(v.community ? [['COMUNIDAD', v.community] as [string, string]] : []),
+        ['REFERENCIA', v.reference || 'NO REGISTRA'],
+      ]);
+    });
+
+    // Agresores (iterar sobre todos)
+    c.aggressors.forEach((a, i) => {
+      const label = c.aggressors.length > 1 ? `Agresor ${i + 1} de ${c.aggressors.length}` : 'Agresor';
+      drawHeader(label, destructive);
+      drawTable([
+        ['NOMBRE', a.name], ['DNI', a.dni], ['TELÉFONO', a.phone],
+        ['DIRECCIÓN', formatAddress(a)],
+        ...(a.annex ? [['ANEXO', a.annex] as [string, string]] : []),
+        ...(a.community ? [['COMUNIDAD', a.community] as [string, string]] : []),
+      ]);
+    });
+
     drawHeader('Clasificación', primary);
     drawTable([
       ['TIPO VIOLENCIA', c.violenceType.join(', ')], ['RIESGO', c.riskLevel.toUpperCase()],
       ['LUGAR', c.incidentLocation], ['FECHA SUCESO', format(new Date(c.incidentDate), 'dd/MM/yyyy')], ['HORA APROX', c.incidentTime],
     ]);
 
+    if (y > 250) { doc.addPage(); y = 20; }
     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]); doc.roundedRect(14, y, 182, 22, 1, 1, 'F');
     doc.setTextColor(primary[0], primary[1], primary[2]); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
     doc.text('DESCRIPCIÓN DETALLADA:', 18, y + 4);
@@ -251,8 +322,8 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
           <TableHeader className="bg-primary/5">
             <TableRow>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Expediente</TableHead>
-              <TableHead className="font-bold text-primary text-[11px] uppercase">Víctima</TableHead>
-              <TableHead className="font-bold text-primary text-[11px] uppercase">Agresor</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase">Víctima(s)</TableHead>
+              <TableHead className="font-bold text-primary text-[11px] uppercase">Agresor(es)</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Tipo</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Oficial</TableHead>
               <TableHead className="font-bold text-primary text-[11px] uppercase">Riesgo</TableHead>
@@ -264,10 +335,10 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
           </TableHeader>
           <TableBody>
             {paginatedCases.map(c => (
-              <TableRow key={c.id} className="hover:bg-muted/30">
-                <TableCell className="font-mono text-[11px] font-bold">
-                  <div className="flex items-center gap-1.5">
-                    <span>{c.caseNumber}</span>
+              <TableRow key={c.id} className="hover:bg-muted/30 transition-colors group">
+                <TableCell className="font-mono text-[11px] font-bold py-3">
+                  <div className="flex flex-col gap-1.5 items-start">
+                    <span className="bg-muted px-2 py-1 rounded-md text-foreground">{c.caseNumber}</span>
                     {showOwnershipBadge && (
                       isOwner(c) ? (
                         <Badge className="text-[8px] font-black bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 px-1.5 py-0">MÍO</Badge>
@@ -277,15 +348,41 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-[11px]">{c.victim.name}</TableCell>
-                <TableCell className="text-[11px]">{c.aggressor.name}</TableCell>
-                <TableCell className="text-[11px]">{c.violenceType.join(', ')}</TableCell>
-                <TableCell className="text-[10px] font-medium uppercase">{c.assignedOfficer}</TableCell>
+                <TableCell>
+                  <PersonSummary persons={c.victims} color="bg-indigo-50 text-indigo-700 border-indigo-200" />
+                </TableCell>
+                <TableCell>
+                  <PersonSummary persons={c.aggressors} color="bg-rose-50 text-rose-700 border-rose-200" />
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1 max-w-[120px]">
+                    {c.violenceType.map((t, i) => (
+                      <Badge key={i} variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                        {t.replace(/Violencia /i, '')}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[9px] font-black border border-blue-200 shrink-0">
+                      {c.assignedOfficer.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase truncate max-w-[90px]" title={c.assignedOfficer}>
+                      {c.assignedOfficer}
+                    </span>
+                  </div>
+                </TableCell>
                 <TableCell><Badge variant="outline" className={`text-[9px] font-bold ${riskColors[c.riskLevel]}`}>{c.riskLevel}</Badge></TableCell>
                 <TableCell><CaseDeadlineCell deadlineAt={c.deadlineAt} status={c.status} /></TableCell>
                 <TableCell>
                   <Select value={c.status} onValueChange={v => { setTargetStatus({ id: c.id, caseNumber: c.caseNumber, status: v as CaseStatus }); setPasswordPurpose('status'); }} disabled={!canManageCase(c)}>
-                    <SelectTrigger className={`h-7 w-[130px] text-[10px] font-black bg-muted/20 ${statusConfig[c.status].color} rounded-lg ${!canManageCase(c) ? 'opacity-50 cursor-not-allowed' : ''}`}><SelectValue /></SelectTrigger>
+                    <SelectTrigger className={`h-8 w-[130px] text-[10px] font-black shadow-none border-0 bg-muted/40 ${statusConfig[c.status].color} rounded-lg ${!canManageCase(c) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/60 transition-colors'}`}>
+                      <div className="flex items-center gap-1.5">
+                        {statusConfig[c.status].icon}
+                        <SelectValue />
+                      </div>
+                    </SelectTrigger>
                     <SelectContent>
                       {(['Pendiente', 'En Proceso', 'Resuelto', 'Cerrado', 'Archivado'] as CaseStatus[]).map(s => (
                         <SelectItem key={s} value={s} className="text-xs font-bold">{s}</SelectItem>
@@ -294,16 +391,16 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
                   </Select>
                 </TableCell>
                 <TableCell className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span>{format(new Date(c.updatedAt), 'dd/MM/yy')}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">{format(new Date(c.updatedAt), 'dd/MM/yyyy')}</span>
                     <span className="font-mono text-[9px]">{format(new Date(c.updatedAt), 'HH:mm')}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="outline" size="sm" className="h-7 gap-1 text-[9px] font-black border-primary/20 text-primary hover:bg-primary hover:text-white rounded-lg px-2" onClick={() => setViewingCase(c)}><Eye className="h-3 w-3" /> VER</Button>
-                    <Button variant="outline" size="sm" disabled={!canManageCase(c)} className="h-7 gap-1 text-[9px] font-black border-amber-500/20 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg px-2 disabled:opacity-30" onClick={() => { setTargetEdit(c); setPasswordPurpose('edit-entry'); }}><Edit className="h-3 w-3" /> EDITAR</Button>
-                    <Button variant="outline" size="sm" disabled={!canManageCase(c)} className="h-7 gap-1 text-[9px] font-black border-destructive/20 text-destructive hover:bg-destructive hover:text-white rounded-lg px-2 disabled:opacity-30" onClick={() => { setTargetDelete({ id: c.id, caseNumber: c.caseNumber }); setPasswordPurpose('delete'); }}><Trash2 className="h-3 w-3" /> BORRAR</Button>
+                  <div className="flex justify-end gap-1.5">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-lg transition-colors border border-primary/20 bg-primary/5" title="Ver detalle" onClick={() => setViewingCase(c)}><Eye className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" disabled={!canManageCase(c)} className="h-8 w-8 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition-colors border border-amber-500/20 bg-amber-50 disabled:opacity-30" title="Editar" onClick={() => { setTargetEdit(c); setPasswordPurpose('edit-entry'); }}><Edit className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" disabled={!canManageCase(c)} className="h-8 w-8 text-destructive hover:bg-destructive hover:text-white rounded-lg transition-colors border border-destructive/20 bg-destructive/5 disabled:opacity-30" title="Borrar" onClick={() => { setTargetDelete({ id: c.id, caseNumber: c.caseNumber }); setPasswordPurpose('delete'); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -345,30 +442,36 @@ export function CaseList({ cases, onUpdate }: { cases: PoliceCase[]; onUpdate: (
 
           {viewingCase && (
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3 p-5 bg-muted/20 rounded-2xl border shadow-sm">
-                  <h4 className="text-[10px] font-black text-primary flex items-center gap-2 uppercase tracking-[0.2em] border-b pb-2"><User className="h-4 w-4" /> Datos de la Víctima</h4>
-                  <div className="space-y-2 pt-1">
-                    <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.victim.name}</p>
-                    <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.victim.dni)}</p>
-                    <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.victim.phone}</p>
-                    <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.victim.street} #{viewingCase.victim.number}, {viewingCase.victim.district}</p>
-                    {viewingCase.victim.annex && <p className="text-xs"><strong>ANEXO:</strong> {viewingCase.victim.annex}</p>}
-                    {viewingCase.victim.community && <p className="text-xs"><strong>COMUNIDAD:</strong> {viewingCase.victim.community}</p>}
-                    <p className="text-xs"><strong>REFERENCIA:</strong> {viewingCase.victim.reference || 'Ninguna'}</p>
-                  </div>
-                </div>
-                <div className="space-y-3 p-5 bg-destructive/5 rounded-2xl border border-destructive/10 shadow-sm">
-                  <h4 className="text-[10px] font-black text-destructive flex items-center gap-2 uppercase tracking-[0.2em] border-b border-destructive/10 pb-2"><User className="h-4 w-4" /> Datos del Agresor</h4>
-                  <div className="space-y-2 pt-1">
-                    <p className="text-xs"><strong>NOMBRE:</strong> {viewingCase.aggressor.name}</p>
-                    <p className="text-xs"><strong>DNI:</strong> {maskDni(viewingCase.aggressor.dni)}</p>
-                    <p className="text-xs"><strong>CELULAR:</strong> {viewingCase.aggressor.phone}</p>
-                    <p className="text-xs"><strong>DIRECCIÓN:</strong> {viewingCase.aggressor.street} #{viewingCase.aggressor.number}, {viewingCase.aggressor.district}</p>
-                    {viewingCase.aggressor.annex && <p className="text-xs"><strong>ANEXO:</strong> {viewingCase.aggressor.annex}</p>}
-                    {viewingCase.aggressor.community && <p className="text-xs"><strong>COMUNIDAD:</strong> {viewingCase.aggressor.community}</p>}
-                  </div>
-                </div>
+              {/* ── Víctimas ── */}
+              <div className="space-y-3">
+                {viewingCase.victims.map((v, i) => (
+                  <PersonDetailCard
+                    key={`v-${i}`}
+                    person={v}
+                    index={i}
+                    total={viewingCase.victims.length}
+                    title="Víctima"
+                    bgClass="bg-muted/20"
+                    borderClass="border-primary/10"
+                    titleColor="text-primary"
+                  />
+                ))}
+              </div>
+
+              {/* ── Agresores ── */}
+              <div className="space-y-3">
+                {viewingCase.aggressors.map((a, i) => (
+                  <PersonDetailCard
+                    key={`a-${i}`}
+                    person={a}
+                    index={i}
+                    total={viewingCase.aggressors.length}
+                    title="Agresor"
+                    bgClass="bg-destructive/5"
+                    borderClass="border-destructive/10"
+                    titleColor="text-destructive"
+                  />
+                ))}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

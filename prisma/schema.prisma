@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  // En producción (Hostinger) usamos MySQL / MariaDB.
-  // Cambia a "postgresql" si prefieres Postgres.
-  provider = "mysql"
+  // En producción (Hostinger) usamos MySQL / MariaDB → cambiar a "mysql".
+  // Para desarrollo local usamos SQLite.
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -42,27 +42,8 @@ model Case {
   entryDate       String
   entryTime       String
 
-  // Víctima (campos cifrados marcados con // 🔒)
-  victimName      String // 🔒
-  victimDni       String // 🔒
-  victimPhone     String // 🔒
-  victimStreet    String // 🔒
-  victimNumber    String // 🔒
-  victimDistrict  String
-  victimAnnex     String @default("")
-  victimCommunity String @default("")
-  victimReference String // 🔒
-
-  // Agresor
-  aggressorName      String // 🔒
-  aggressorDni       String // 🔒
-  aggressorPhone     String // 🔒
-  aggressorStreet    String // 🔒
-  aggressorNumber    String // 🔒
-  aggressorDistrict  String
-  aggressorAnnex     String @default("")
-  aggressorCommunity String @default("")
-  aggressorReference String // 🔒
+  // Personas vinculadas (víctimas y agresores)
+  persons CasePerson[]
 
   violenceType           String
   riskLevel              String
@@ -96,6 +77,32 @@ model Case {
   @@index([isDeleted])
   @@index([createdAt])
   @@index([deadlineAt])
+}
+
+// Persona vinculada a un expediente (víctima o agresor).
+// Cada registro es una instantánea de los datos en el momento del registro.
+// role: "victim" | "aggressor"
+model CasePerson {
+  id        String @id @default(uuid())
+  caseId    String
+  role      String // "victim" | "aggressor"
+  sortOrder Int    @default(0)
+
+  name      String // 🔒 AES-256-GCM
+  dni       String // 🔒
+  phone     String // 🔒
+  street    String @default("") // 🔒
+  number    String @default("") // 🔒
+  district  String
+  annex     String @default("")
+  community String @default("")
+  reference String @default("") // 🔒
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([role])
+  @@index([caseId, role, sortOrder])
 }
 
 // Notificación de vencimiento de plazo de expediente (solo superadmin la consume)

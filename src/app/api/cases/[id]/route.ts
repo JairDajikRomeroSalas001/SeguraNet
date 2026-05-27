@@ -6,7 +6,7 @@ import { canManageCase, canViewCase } from '@/lib/middleware/rbac';
 import { verifyPassword } from '@/lib/security/password';
 import { sha256Hex } from '@/lib/security/hmac';
 import { logAuditEvent } from '@/lib/audit-logger';
-import { caseToDbInput, dbToCase } from '@/lib/cases/case-mapper';
+import { caseToDbInput, personToDbInput, dbToCase } from '@/lib/cases/case-mapper';
 import type { PoliceCase } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -29,7 +29,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if ('response' in guard) return guard.response;
   const { session } = guard;
 
-  const row = await prisma.case.findUnique({ where: { id } });
+  const row = await prisma.case.findUnique({
+    where: { id },
+    include: { persons: true },
+  });
   if (!row || row.isDeleted) {
     return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
   }
@@ -79,7 +82,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Contraseña incorrecta' }, { status: 401 });
   }
 
-  const row = await prisma.case.findUnique({ where: { id } });
+  const row = await prisma.case.findUnique({
+    where: { id },
+    include: { persons: true },
+  });
   if (!row || row.isDeleted) {
     return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
   }
@@ -102,14 +108,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   };
   merged.integrityHash = sha256Hex(JSON.stringify(merged));
 
-  await prisma.case.update({ where: { id }, data: caseToDbInput(merged) });
+  // Transacción atómica: actualizar caso + reemplazar todas las personas
+  await prisma.$transaction(async (tx) => {
+    await tx.case.update({ where: { id }, data: caseToDbInput(merged) });
+
+    // Eliminar personas anteriores y crear las nuevas
+    await tx.casePerson.deleteMany({ where: { caseId: id } });
+
+    const personRecords = [
+      ...merged.victims.map((v, i) => personToDbInput(v, id, 'victim', i)),
+      ...merged.aggressors.map((a, i) => personToDbInput(a, id, 'aggressor', i)),
+    ];
+    await tx.casePerson.createMany({ data: personRecords });
+  });
 
   await logAuditEvent({
     officerUid: session.uid,
     officerUsername: session.username,
     action: 'UPDATE_EXPEDIENT',
     resourceId: id,
-    details: `Edición de ${current.caseNumber}`,
+    details: `Edición de ${current.caseNumber} (${merged.victims.length} víctimas, ${merged.aggressors.length} agresores)`,
     userAgent: userAgent(request),
     ipAddress: clientIp(request),
   });

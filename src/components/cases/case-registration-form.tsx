@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm, UseFormReturn } from 'react-hook-form';
+import { useForm, useFieldArray, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   FilePlus, FileText, Clock, Calendar, Building2, Send, Hash, User, ShieldAlert,
   ChevronRight, ChevronLeft, Search, Phone, Map, AlertTriangle, Shield, MapPin, ClipboardList, UserCheck, Save, Lock,
+  Plus, X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -28,8 +29,8 @@ const personSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
   dni: z.string().length(8, '8 dígitos').regex(/^\d+$/, 'Solo números'),
   phone: z.string().length(9, '9 dígitos').regex(/^9\d{8}$/, 'Empieza con 9'),
-  street: z.string().min(1, 'Calle requerida'),
-  number: z.string().min(1, 'Número requerido'),
+  street: z.string().optional().default(''),
+  number: z.string().optional().default(''),
   district: z.string().min(1, 'Distrito requerido'),
   annex: z.string().optional().default(''),
   community: z.string().optional().default(''),
@@ -42,8 +43,8 @@ const caseSchema = z.object({
   origin: z.string().min(1),
   entryDate: z.string().min(1),
   entryTime: z.string().min(1),
-  victim: personSchema,
-  aggressor: personSchema,
+  victims: z.array(personSchema).min(1, 'Mínimo 1 víctima'),
+  aggressors: z.array(personSchema).min(1, 'Mínimo 1 agresor'),
   violenceType: z.array(z.string()).min(1, 'Seleccione al menos un tipo'),
   riskLevel: z.enum(['Leve', 'Moderado', 'Severo', 'Muy Severo']),
   incidentDescription: z.string().min(1),
@@ -55,6 +56,11 @@ const caseSchema = z.object({
 });
 
 type FormData = z.infer<typeof caseSchema>;
+
+const EMPTY_PERSON = {
+  name: '', dni: '', phone: '', street: '', number: '',
+  district: 'Paucartambo', annex: '', community: '', reference: '',
+};
 
 const originOptions = [
   'Juez de Paz', 'Juzgado de Familia', 'Juzgado Especializado de Familia', 'Juzgado Mixto',
@@ -87,77 +93,111 @@ const riskFactorOptions = [
   { id: 'control_economico', label: 'Control económico' },
 ];
 
+// ─── PersonFormFields: Renderiza los campos de una persona ────────────────────
+
 const PersonFormFields = ({
-  type, title, color, form, validateDni, isValidating,
+  fieldPrefix,
+  index,
+  title,
+  color,
+  badgeColor,
+  form,
+  onValidateDni,
+  isValidating,
+  onRemove,
+  canRemove,
 }: {
-  type: 'victim' | 'aggressor';
+  fieldPrefix: `victims.${number}` | `aggressors.${number}`;
+  index: number;
   title: string;
   color: string;
+  badgeColor: string;
   form: UseFormReturn<FormData>;
-  validateDni: (type: 'victim' | 'aggressor') => void;
+  onValidateDni: () => void;
   isValidating: boolean;
+  onRemove?: () => void;
+  canRemove: boolean;
 }) => {
   const onlyDigits = (e: React.ChangeEvent<HTMLInputElement>, ch: (v: string) => void) =>
     ch(e.target.value.replace(/\D/g, ''));
 
   return (
-    <div className="space-y-4 p-5 rounded-xl border bg-card/50 shadow-sm">
+    <div className="space-y-4 p-5 rounded-xl border bg-card/50 shadow-sm transition-all duration-300 animate-in fade-in-0 slide-in-from-top-2">
       <div className="flex items-center justify-between border-b pb-2 mb-4">
-        <h4 className={`text-xs font-bold ${color} uppercase tracking-widest flex items-center gap-2`}><User className="h-4 w-4" /> {title}</h4>
+        <h4 className={`text-xs font-bold ${color} uppercase tracking-widest flex items-center gap-2`}>
+          <User className="h-4 w-4" />
+          {title}
+          <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-black text-white ${badgeColor}`}>
+            {index + 1}
+          </span>
+        </h4>
+        {canRemove && onRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="h-7 gap-1 text-[9px] font-black text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg px-2"
+          >
+            <X className="h-3 w-3" /> QUITAR
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField control={form.control} name={`${type}.dni`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.dni`} render={({ field }) => (
           <FormItem>
             <FormLabel>DNI (8 dígitos)</FormLabel>
             <div className="flex gap-2">
               <FormControl>
                 <Input placeholder="8 dígitos" maxLength={8} inputMode="numeric" {...field} onChange={e => onlyDigits(e, field.onChange)} />
               </FormControl>
-              <Button type="button" variant="secondary" size="icon" onClick={() => validateDni(type)} disabled={isValidating}>
+              <Button type="button" variant="secondary" size="icon" onClick={onValidateDni} disabled={isValidating}>
                 <Search className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
               </Button>
             </div>
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name={`${type}.name`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.name`} render={({ field }) => (
           <FormItem><FormLabel>Nombres y Apellidos</FormLabel><FormControl><Input placeholder="Nombre Completo" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField control={form.control} name={`${type}.phone`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.phone`} render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center gap-2"><Phone className="h-3 w-3" /> Celular (9 dígitos)</FormLabel>
             <FormControl><Input placeholder="999888777" maxLength={9} inputMode="numeric" {...field} onChange={e => onlyDigits(e, field.onChange)} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name={`${type}.street`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.street`} render={({ field }) => (
           <FormItem><FormLabel>Calle / Jirón / Av.</FormLabel><FormControl><Input placeholder="Ej: Jr. Cusco" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <FormField control={form.control} name={`${type}.number`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.number`} render={({ field }) => (
           <FormItem><FormLabel>Número</FormLabel><FormControl><Input placeholder="123 o S/N" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField control={form.control} name={`${type}.district`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.district`} render={({ field }) => (
           <FormItem><FormLabel>Distrito</FormLabel><FormControl><Input placeholder="Paucartambo" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <FormField control={form.control} name={`${type}.annex`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.annex`} render={({ field }) => (
           <FormItem><FormLabel>Anexo</FormLabel><FormControl><Input placeholder="Ej: Anexo 10" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
-        <FormField control={form.control} name={`${type}.community`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.community`} render={({ field }) => (
           <FormItem><FormLabel>Comunidad</FormLabel><FormControl><Input placeholder="Ej: Comunidad Campesina" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
       <div className="grid grid-cols-1 gap-4">
-        <FormField control={form.control} name={`${type}.reference`} render={({ field }) => (
+        <FormField control={form.control} name={`${fieldPrefix}.reference`} render={({ field }) => (
           <FormItem><FormLabel className="flex items-center gap-2"><Map className="h-3 w-3" /> Referencia</FormLabel><FormControl><Input placeholder="Ej: Cerca al mercado" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
     </div>
   );
 };
+
+// ─── Formulario Principal ─────────────────────────────────────────────────────
 
 export function CaseRegistrationForm({
   onCaseAdded,
@@ -167,7 +207,7 @@ export function CaseRegistrationForm({
   initialData?: PoliceCase;
 }) {
   const [step, setStep] = useState(1);
-  const [isValidatingDni, setIsValidatingDni] = useState({ victim: false, aggressor: false });
+  const [validatingDnis, setValidatingDnis] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -179,36 +219,66 @@ export function CaseRegistrationForm({
 
   const form = useForm<FormData>({
     resolver: zodResolver(caseSchema),
-    defaultValues: initialData ?? {
-      caseNumber: '',
-      assignedOfficer: user?.fullName?.toUpperCase() ?? '',
-      origin: '',
-      entryDate: new Date().toISOString().split('T')[0],
-      entryTime: getCurrentTime(),
-      victim: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', annex: '', community: '', reference: '' },
-      aggressor: { name: '', dni: '', phone: '', street: '', number: '', district: 'Paucartambo', annex: '', community: '', reference: '' },
-      violenceType: [],
-      riskLevel: 'Leve',
-      incidentDescription: '',
-      incidentDate: new Date().toISOString().split('T')[0],
-      incidentTime: '',
-      incidentLocation: '',
-      riskFactors: [],
-      additionalObservations: '',
-    },
+    defaultValues: initialData
+      ? {
+          caseNumber: initialData.caseNumber,
+          assignedOfficer: initialData.assignedOfficer,
+          origin: initialData.origin,
+          entryDate: initialData.entryDate,
+          entryTime: initialData.entryTime,
+          victims: initialData.victims,
+          aggressors: initialData.aggressors,
+          violenceType: initialData.violenceType,
+          riskLevel: initialData.riskLevel,
+          incidentDescription: initialData.incidentDescription,
+          incidentDate: initialData.incidentDate,
+          incidentTime: initialData.incidentTime,
+          incidentLocation: initialData.incidentLocation,
+          riskFactors: initialData.riskFactors,
+          additionalObservations: initialData.additionalObservations,
+        }
+      : {
+          caseNumber: '',
+          assignedOfficer: user?.fullName?.toUpperCase() ?? '',
+          origin: '',
+          entryDate: new Date().toISOString().split('T')[0],
+          entryTime: getCurrentTime(),
+          victims: [{ ...EMPTY_PERSON }],
+          aggressors: [{ ...EMPTY_PERSON }],
+          violenceType: [],
+          riskLevel: 'Leve',
+          incidentDescription: '',
+          incidentDate: new Date().toISOString().split('T')[0],
+          incidentTime: '',
+          incidentLocation: '',
+          riskFactors: [],
+          additionalObservations: '',
+        },
   });
 
-  const validateDni = async (type: 'victim' | 'aggressor') => {
-    const dni = form.getValues(`${type}.dni`);
+  const {
+    fields: victimFields,
+    append: appendVictim,
+    remove: removeVictim,
+  } = useFieldArray({ control: form.control, name: 'victims' });
+
+  const {
+    fields: aggressorFields,
+    append: appendAggressor,
+    remove: removeAggressor,
+  } = useFieldArray({ control: form.control, name: 'aggressors' });
+
+  const validateDni = async (fieldPrefix: string) => {
+    const dni = form.getValues(`${fieldPrefix}.dni` as any);
     if (!/^\d{8}$/.test(dni)) {
       toast({ variant: 'destructive', title: 'DNI inválido', description: '8 dígitos numéricos.' });
       return;
     }
-    setIsValidatingDni(prev => ({ ...prev, [type]: true }));
+    setValidatingDnis(prev => ({ ...prev, [fieldPrefix]: true }));
     try {
       const res = await api.post<{ valid: boolean; fullName: string | null }>('/api/external/reniec', { dni });
       if (res.valid && res.fullName) {
-        form.setValue(`${type}.name`, res.fullName);
+        form.setValue(`${fieldPrefix}.name` as any, res.fullName);
         toast({ title: 'DNI validado', description: res.fullName });
       } else {
         toast({ title: 'No encontrado', description: 'Complete manualmente.' });
@@ -217,14 +287,14 @@ export function CaseRegistrationForm({
       const msg = err instanceof ApiError ? err.message : 'RENIEC no disponible';
       toast({ variant: 'destructive', title: 'Error RENIEC', description: msg });
     } finally {
-      setIsValidatingDni(prev => ({ ...prev, [type]: false }));
+      setValidatingDnis(prev => ({ ...prev, [fieldPrefix]: false }));
     }
   };
 
   const nextStep = async () => {
     let fields: (keyof FormData)[] = [];
     if (step === 1) fields = ['caseNumber', 'assignedOfficer', 'origin', 'entryDate', 'entryTime'];
-    if (step === 2) fields = ['victim', 'aggressor'];
+    if (step === 2) fields = ['victims', 'aggressors'];
     if (step === 3) fields = ['violenceType', 'riskLevel'];
     const ok = await form.trigger(fields);
     if (ok) setStep(step + 1);
@@ -312,9 +382,71 @@ export function CaseRegistrationForm({
 
             {step === 2 && (
               <div className="space-y-8">
-                <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2 border-b pb-2"><User className="h-4 w-4" /> Paso 2: Víctima y Agresor</h3>
-                <PersonFormFields type="victim" title="Datos de la Víctima" color="text-primary" form={form} validateDni={validateDni} isValidating={isValidatingDni.victim} />
-                <PersonFormFields type="aggressor" title="Datos del Agresor" color="text-destructive" form={form} validateDni={validateDni} isValidating={isValidatingDni.aggressor} />
+                <h3 className="text-sm font-bold uppercase text-muted-foreground flex items-center gap-2 border-b pb-2"><User className="h-4 w-4" /> Paso 2: Víctimas y Agresores</h3>
+
+                {/* ── Sección Víctimas ── */}
+                <div className="space-y-4">
+                  {victimFields.map((field, index) => (
+                    <PersonFormFields
+                      key={field.id}
+                      fieldPrefix={`victims.${index}`}
+                      index={index}
+                      title={victimFields.length === 1 ? 'Datos de la Víctima' : `Víctima`}
+                      color="text-primary"
+                      badgeColor="bg-primary"
+                      form={form}
+                      onValidateDni={() => validateDni(`victims.${index}`)}
+                      isValidating={!!validatingDnis[`victims.${index}`]}
+                      onRemove={() => removeVictim(index)}
+                      canRemove={victimFields.length > 1}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => appendVictim({ ...EMPTY_PERSON })}
+                    className="w-full border-dashed border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 h-11 gap-2 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Agregar otra víctima
+                    <span className="text-[10px] font-medium normal-case text-muted-foreground ml-1">
+                      ({victimFields.length} registrada{victimFields.length !== 1 ? 's' : ''})
+                    </span>
+                  </Button>
+                </div>
+
+                <Separator className="opacity-30" />
+
+                {/* ── Sección Agresores ── */}
+                <div className="space-y-4">
+                  {aggressorFields.map((field, index) => (
+                    <PersonFormFields
+                      key={field.id}
+                      fieldPrefix={`aggressors.${index}`}
+                      index={index}
+                      title={aggressorFields.length === 1 ? 'Datos del Agresor' : `Agresor`}
+                      color="text-destructive"
+                      badgeColor="bg-destructive"
+                      form={form}
+                      onValidateDni={() => validateDni(`aggressors.${index}`)}
+                      isValidating={!!validatingDnis[`aggressors.${index}`]}
+                      onRemove={() => removeAggressor(index)}
+                      canRemove={aggressorFields.length > 1}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => appendAggressor({ ...EMPTY_PERSON })}
+                    className="w-full border-dashed border-destructive/30 text-destructive hover:bg-destructive/5 hover:border-destructive/50 h-11 gap-2 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Agregar otro agresor
+                    <span className="text-[10px] font-medium normal-case text-muted-foreground ml-1">
+                      ({aggressorFields.length} registrado{aggressorFields.length !== 1 ? 's' : ''})
+                    </span>
+                  </Button>
+                </div>
               </div>
             )}
 

@@ -68,10 +68,8 @@ export function DashboardView() {
       const q = f.query.toLowerCase();
       result = result.filter(c =>
         c.caseNumber.toLowerCase().includes(q) ||
-        c.victim.name.toLowerCase().includes(q) ||
-        c.aggressor.name.toLowerCase().includes(q) ||
-        c.victim.dni.toLowerCase().includes(q) ||
-        c.aggressor.dni.toLowerCase().includes(q),
+        c.victims.some(v => v.name.toLowerCase().includes(q) || v.dni.toLowerCase().includes(q)) ||
+        c.aggressors.some(a => a.name.toLowerCase().includes(q) || a.dni.toLowerCase().includes(q)),
       );
     }
     if (f.status !== 'all') result = result.filter(c => c.status === f.status);
@@ -116,9 +114,11 @@ export function DashboardView() {
       toast({ variant: 'destructive', title: 'Sin datos', description: 'No hay denuncias para exportar.' });
       return;
     }
-    const headers = ['EXPEDIENTE', 'OFICIAL', 'VICTIMA', 'AGRESOR', 'TIPO_VIOLENCIA', 'RIESGO', 'ESTADO', 'FECHA'];
+    const headers = ['EXPEDIENTE', 'OFICIAL', 'VICTIMA(S)', 'AGRESOR(ES)', 'TIPO_VIOLENCIA', 'RIESGO', 'ESTADO', 'FECHA'];
     const rows = filteredCases.map(c => [
-      `"${c.caseNumber}"`, `"${c.assignedOfficer}"`, `"${c.victim.name}"`, `"${c.aggressor.name}"`,
+      `"${c.caseNumber}"`, `"${c.assignedOfficer}"`,
+      `"${c.victims.map(v => v.name).join(' | ')}"`,
+      `"${c.aggressors.map(a => a.name).join(' | ')}"`,
       `"${c.violenceType.join(' | ')}"`, `"${c.riskLevel}"`, `"${c.status}"`, `"${c.entryDate}"`,
     ].join(','));
     const csv = '﻿' + 'sep=,\n' + headers.join(',') + '\n' + rows.join('\n');
@@ -142,8 +142,13 @@ export function DashboardView() {
     doc.setFontSize(9); doc.setTextColor(100);
     doc.text(`REPORTE GENERADO: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} | OFICIAL: ${user?.fullName}`, 14, 28);
     (doc as any).autoTable({
-      head: [['EXPEDIENTE', 'VÍCTIMA', 'AGRESOR', 'VIOLENCIA', 'RIESGO', 'OFICIAL', 'ESTADO']],
-      body: filteredCases.map(c => [c.caseNumber, c.victim.name, c.aggressor.name, c.violenceType.join(', '), c.riskLevel, c.assignedOfficer, c.status]),
+      head: [['EXPEDIENTE', 'VÍCTIMA(S)', 'AGRESOR(ES)', 'VIOLENCIA', 'RIESGO', 'OFICIAL', 'ESTADO']],
+      body: filteredCases.map(c => [
+        c.caseNumber,
+        c.victims.map(v => v.name).join(', '),
+        c.aggressors.map(a => a.name).join(', '),
+        c.violenceType.join(', '), c.riskLevel, c.assignedOfficer, c.status,
+      ]),
       startY: 34, theme: 'grid',
       headStyles: { fillColor: [54, 71, 125], fontStyle: 'bold', fontSize: 7 },
       styles: { fontSize: 7, cellPadding: 2 },
@@ -209,7 +214,7 @@ export function DashboardView() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto py-6 px-6 max-w-7xl">
+      <main className="flex-1 w-full mx-auto py-6 px-4 md:px-8 xl:px-12 max-w-[1800px]">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <TabsList className="bg-card border shadow-sm p-1 h-12 rounded-xl">
@@ -290,7 +295,7 @@ export function DashboardView() {
       </main>
 
       <footer className="py-4 px-8 border-t bg-card">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="w-full max-w-[1800px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-muted/20 p-1 rounded-lg flex items-center justify-center overflow-hidden">
               {pnpLogo && <Image src={pnpLogo.imageUrl} alt="PNP" width={24} height={24} className="object-contain grayscale hover:grayscale-0 transition-all" />}

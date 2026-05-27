@@ -24,8 +24,8 @@ export interface PoliceCase {
   origin: string;
   entryDate: string;
   entryTime: string;
-  victim: PersonData;
-  aggressor: PersonData;
+  victims: PersonData[];
+  aggressors: PersonData[];
   violenceType: string[];
   riskLevel: RiskLevel;
   incidentDescription: string;
