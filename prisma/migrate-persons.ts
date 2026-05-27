@@ -1,11 +1,10 @@
 /**
  * Script de migración: Columnas planas de víctima/agresor → tabla CasePerson
  *
+ * Soporta tanto MySQL (producción) como SQLite (desarrollo local).
+ * Detecta automáticamente el provider según la DATABASE_URL.
+ *
  * Ejecutar UNA sola vez ANTES de `npx prisma db push --accept-data-loss`.
- * Este script:
- *   1. Crea la tabla CasePerson si no existe (SQLite).
- *   2. Lee los datos existentes de las columnas planas (ya cifrados).
- *   3. Los copia como registros CasePerson SIN descifrar ni re-cifrar.
  *
  * Uso:
  *   npx tsx prisma/migrate-persons.ts
@@ -17,6 +16,8 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
+
+const isMySQL = (process.env.DATABASE_URL ?? '').startsWith('mysql://');
 
 interface OldCaseRow {
   id: string;
@@ -40,39 +41,69 @@ interface OldCaseRow {
   aggressorReference: string;
 }
 
+// Helpers para quoting según el motor
+const q = (name: string) => (isMySQL ? `\`${name}\`` : `"${name}"`);
+const param = (i: number) => '?';
+
 async function main() {
   console.log('═══════════════════════════════════════════════════════');
   console.log('  MIGRACIÓN: Columnas planas → Tabla CasePerson');
+  console.log(`  Motor detectado: ${isMySQL ? 'MySQL' : 'SQLite'}`);
   console.log('═══════════════════════════════════════════════════════\n');
 
-  // Paso 1: Crear la tabla CasePerson si no existe (SQLite)
+  // Paso 1: Crear la tabla CasePerson si no existe
   console.log('1️⃣  Verificando/creando tabla CasePerson...');
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "CasePerson" (
-      "id"        TEXT NOT NULL PRIMARY KEY,
-      "caseId"    TEXT NOT NULL,
-      "role"      TEXT NOT NULL,
-      "sortOrder" INTEGER NOT NULL DEFAULT 0,
-      "name"      TEXT NOT NULL,
-      "dni"       TEXT NOT NULL,
-      "phone"     TEXT NOT NULL,
-      "street"    TEXT NOT NULL DEFAULT '',
-      "number"    TEXT NOT NULL DEFAULT '',
-      "district"  TEXT NOT NULL,
-      "annex"     TEXT NOT NULL DEFAULT '',
-      "community" TEXT NOT NULL DEFAULT '',
-      "reference" TEXT NOT NULL DEFAULT '',
-      CONSTRAINT "CasePerson_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "Case" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `);
 
-  // Crear índices si no existen
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_caseId_idx" ON "CasePerson"("caseId")`);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_role_idx" ON "CasePerson"("role")`);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_caseId_role_sortOrder_idx" ON "CasePerson"("caseId", "role", "sortOrder")`);
+  if (isMySQL) {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS \`CasePerson\` (
+        \`id\`        VARCHAR(191) NOT NULL,
+        \`caseId\`    VARCHAR(191) NOT NULL,
+        \`role\`      VARCHAR(191) NOT NULL,
+        \`sortOrder\` INT NOT NULL DEFAULT 0,
+        \`name\`      TEXT NOT NULL,
+        \`dni\`       TEXT NOT NULL,
+        \`phone\`     TEXT NOT NULL,
+        \`street\`    TEXT NOT NULL,
+        \`number\`    TEXT NOT NULL,
+        \`district\`  VARCHAR(191) NOT NULL,
+        \`annex\`     VARCHAR(191) NOT NULL DEFAULT '',
+        \`community\` VARCHAR(191) NOT NULL DEFAULT '',
+        \`reference\` TEXT NOT NULL,
+        PRIMARY KEY (\`id\`),
+        INDEX \`CasePerson_caseId_idx\` (\`caseId\`),
+        INDEX \`CasePerson_role_idx\` (\`role\`),
+        INDEX \`CasePerson_caseId_role_sortOrder_idx\` (\`caseId\`, \`role\`, \`sortOrder\`),
+        CONSTRAINT \`CasePerson_caseId_fkey\` FOREIGN KEY (\`caseId\`) REFERENCES \`Case\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+  } else {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CasePerson" (
+        "id"        TEXT NOT NULL PRIMARY KEY,
+        "caseId"    TEXT NOT NULL,
+        "role"      TEXT NOT NULL,
+        "sortOrder" INTEGER NOT NULL DEFAULT 0,
+        "name"      TEXT NOT NULL,
+        "dni"       TEXT NOT NULL,
+        "phone"     TEXT NOT NULL,
+        "street"    TEXT NOT NULL DEFAULT '',
+        "number"    TEXT NOT NULL DEFAULT '',
+        "district"  TEXT NOT NULL,
+        "annex"     TEXT NOT NULL DEFAULT '',
+        "community" TEXT NOT NULL DEFAULT '',
+        "reference" TEXT NOT NULL DEFAULT '',
+        CONSTRAINT "CasePerson_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "Case" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_caseId_idx" ON "CasePerson"("caseId")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_role_idx" ON "CasePerson"("role")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CasePerson_caseId_role_sortOrder_idx" ON "CasePerson"("caseId", "role", "sortOrder")`);
+  }
   console.log('   ✓ Tabla CasePerson lista.\n');
 
   // Paso 2: Leer datos de las columnas antiguas
+  const falseVal = isMySQL ? 'false' : '0';
   let rows: OldCaseRow[];
   try {
     rows = await prisma.$queryRawUnsafe<OldCaseRow[]>(`
@@ -80,8 +111,8 @@ async function main() {
              victimDistrict, victimAnnex, victimCommunity, victimReference,
              aggressorName, aggressorDni, aggressorPhone, aggressorStreet, aggressorNumber,
              aggressorDistrict, aggressorAnnex, aggressorCommunity, aggressorReference
-      FROM "Case"
-      WHERE isDeleted = 0
+      FROM ${q('Case')}
+      WHERE isDeleted = ${falseVal}
     `);
   } catch (err) {
     console.log('⚠️  Las columnas antiguas ya no existen — la migración ya se ejecutó.');
@@ -101,21 +132,20 @@ async function main() {
   let migrated = 0;
   let skipped = 0;
 
+  const insertSQL = `INSERT INTO ${q('CasePerson')} (${q('id')},${q('caseId')},${q('role')},${q('sortOrder')},${q('name')},${q('dni')},${q('phone')},${q('street')},${q('number')},${q('district')},${q('annex')},${q('community')},${q('reference')}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  const countSQL = `SELECT COUNT(*) as cnt FROM ${q('CasePerson')} WHERE ${q('caseId')} = ?`;
+
   for (const row of rows) {
     // Verificar si ya tiene personas asociadas (evitar duplicar en re-ejecuciones)
-    const existing = await prisma.$queryRawUnsafe<{ cnt: number }[]>(
-      `SELECT COUNT(*) as cnt FROM "CasePerson" WHERE "caseId" = ?`,
-      row.id,
-    );
-    if (existing[0]?.cnt > 0) {
+    const existing = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(countSQL, row.id);
+    if (Number(existing[0]?.cnt) > 0) {
       skipped++;
       continue;
     }
 
     // Insertar víctima
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "CasePerson" ("id","caseId","role","sortOrder","name","dni","phone","street","number","district","annex","community","reference")
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      insertSQL,
       randomUUID(), row.id, 'victim', 0,
       row.victimName, row.victimDni, row.victimPhone,
       row.victimStreet ?? '', row.victimNumber ?? '',
@@ -126,8 +156,7 @@ async function main() {
 
     // Insertar agresor
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "CasePerson" ("id","caseId","role","sortOrder","name","dni","phone","street","number","district","annex","community","reference")
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      insertSQL,
       randomUUID(), row.id, 'aggressor', 0,
       row.aggressorName, row.aggressorDni, row.aggressorPhone,
       row.aggressorStreet ?? '', row.aggressorNumber ?? '',
