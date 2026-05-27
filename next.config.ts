@@ -15,6 +15,7 @@ const csp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
   productionBrowserSourceMaps: false,
